@@ -58,6 +58,26 @@
                     thumbnail: true,
                     theme: "default",
                     loop: false
+                }).then(function () {
+                    var container = document.querySelector("#video .csPlayer-container");
+                    if (!container) return;
+
+                    var started = false;
+                    var startOnTap = function () {
+                        if (started) return;
+                        started = true;
+                        try {
+                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                            if (playerObj && typeof playerObj.playVideo === "function") {
+                                playerObj.playVideo();
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    };
+
+                    container.addEventListener("click", startOnTap, { once: true });
+                    container.addEventListener("touchstart", startOnTap, { once: true });
                 });
             }
 
@@ -70,5 +90,3 @@
     </script>
 </body>
 </html>
-
-
