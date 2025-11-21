@@ -157,27 +157,34 @@
                     var container = document.querySelector("#video .csPlayer-container");
                     if (!container) return;
 
+                    // Extra safeguard: ensure video is paused on load (no autoplay)
+                    setTimeout(function() {
+                        try {
+                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                            if (playerObj && typeof playerObj.pauseVideo === "function") {
+                                playerObj.pauseVideo();
+                            }
+                        } catch (e) {
+                            console.log("Pause on init:", e);
+                        }
+                    }, 500);
+
                     var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
                     var handleTap = function (e) {
-                        // If the click/tap was on a control button, let the button handle it.
-                        if (e.target.closest(".csPlayer-controls-box main i") || 
-                            e.target.closest(".csPlayer-controls-box .csPlayer-controls")) {
+                        // Let control buttons handle their own clicks
+                        if (e.target.closest(".csPlayer-controls-box .csPlayer-controls")) {
                             return;
                         }
 
                         try {
                             var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                            if (playerObj && typeof playerObj.getPlayerState === "function") {
-                                var state = playerObj.getPlayerState();
-                                // -1 (unstarted), 2 (paused), 5 (cued) -> try to play
-                                // 1 (playing) -> do nothing or let default toggle happen
-                                if (state === -1 || state === 2 || state === 5) {
-                                    playerObj.playVideo();
-                                }
+                            if (playerObj && typeof playerObj.playVideo === "function") {
+                                // Force play without state checks for WebView compatibility
+                                playerObj.playVideo();
                             }
                         } catch (err) {
-                            console.error(err);
+                            console.error("Play error:", err);
                         }
                     };
 
@@ -188,6 +195,28 @@
                         // Desktop click
                         container.addEventListener("click", handleTap);
                     }
+
+                    // Extra fix for Unity WebView: directly wire the play/pause button
+                    setTimeout(function() {
+                        var playBtn = document.querySelector("#video .csPlayer-controls-box main .csPlayer-play-pause-btn");
+                        if (playBtn) {
+                            playBtn.addEventListener("click", function() {
+                                try {
+                                    var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                                    if (playerObj) {
+                                        var state = playerObj.getPlayerState ? playerObj.getPlayerState() : -1;
+                                        if (state === 1) {
+                                            playerObj.pauseVideo();
+                                        } else {
+                                            playerObj.playVideo();
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.error("Play button error:", err);
+                                }
+                            }, true); // Use capture phase
+                        }
+                    }, 1000);
                 });
             }
 
