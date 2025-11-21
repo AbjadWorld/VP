@@ -44,13 +44,18 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            position: relative;
         }
 
         #video .csPlayer .csPlayer-container iframe {
-            width: 100% !important;
+            /* Restore csPlayer's original sizing to hide YouTube UI */
+            width: 2400% !important;
             height: 100% !important;
-            margin: 0 !important;
-            position: static !important;
+            margin-left: -1149.95% !important;
+            position: absolute !important;
+            top: 0;
+            left: 0;
         }
 
         /* Force csPlayer controls to be visible (especially on mobile) */
