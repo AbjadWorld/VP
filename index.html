@@ -33,6 +33,17 @@
             --playerColor: #fff;
             --settingsBg: #181818;
         }
+
+        /* Force csPlayer controls to be visible (especially on mobile) */
+        #video .csPlayer .csPlayer-controls-box {
+            display: flex !important;
+            align-items: flex-end;
+        }
+
+        #video .csPlayer .csPlayer-controls-box main,
+        #video .csPlayer .csPlayer-controls-box .csPlayer-controls {
+            transform: scale(1) !important;
+        }
     </style>
 </head>
 <body>
