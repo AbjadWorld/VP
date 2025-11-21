@@ -63,6 +63,8 @@
                     if (!container) return;
 
                     var started = false;
+                    var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
                     var startOnTap = function () {
                         if (started) return;
                         started = true;
@@ -76,8 +78,11 @@
                         }
                     };
 
-                    container.addEventListener("click", startOnTap, { once: true });
-                    container.addEventListener("touchstart", startOnTap, { once: true });
+                    if (isTouch) {
+                        container.addEventListener("touchend", startOnTap, { once: true });
+                    } else {
+                        container.addEventListener("click", startOnTap, { once: true });
+                    }
                 });
             }
 
