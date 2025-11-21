@@ -92,10 +92,16 @@
             padding: 0 15px 10px 15px;
             background: linear-gradient(transparent, rgba(0,0,0,0.7));
             position: absolute;
-            bottom: 0;
+            bottom: 30px; /* Move up to avoid being cut off */
             left: 0;
             z-index: 2147483647 !important;
             display: flex !important; /* Force flex layout */
+        }
+
+        /* Hide Settings and Fullscreen buttons */
+        #video .csPlayer .csPlayer-controls-box .csPlayer-controls .settingsBtn,
+        #video .csPlayer .csPlayer-controls-box .csPlayer-controls .fsBtn {
+            display: none !important;
         }
     </style>
 </head>
