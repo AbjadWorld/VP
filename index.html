@@ -24,23 +24,43 @@
         #video {
             width: 100vw;
             height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #video .csPlayer {
             width: 100%;
             height: 100%;
+            max-width: 100vw;
+            max-height: 100vh;
             --playerBg: #000;
             --playerColor: #fff;
             --settingsBg: #181818;
-            /* Override csPlayer default aspect-ratio */
-            aspect-ratio: unset !important;
+            /* Keep 16:9 aspect ratio but fit within viewport */
+            aspect-ratio: 16/9 !important;
             min-width: 0 !important;
+        }
+
+        /* Responsive sizing for different orientations */
+        @media (orientation: landscape) {
+            #video .csPlayer {
+                width: auto;
+                height: 100vh;
+            }
+        }
+
+        @media (orientation: portrait) {
+            #video .csPlayer {
+                width: 100vw;
+                height: auto;
+            }
         }
 
         #video .csPlayer .csPlayer-container {
             width: 100%;
             height: 100%;
-            aspect-ratio: unset !important;
+            aspect-ratio: 16/9 !important;
             display: flex;
             align-items: center;
             justify-content: center;
