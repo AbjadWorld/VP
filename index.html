@@ -32,17 +32,61 @@
             --playerBg: #000;
             --playerColor: #fff;
             --settingsBg: #181818;
+            /* Override csPlayer default aspect-ratio */
+            aspect-ratio: unset !important;
+            min-width: 0 !important;
+        }
+
+        #video .csPlayer .csPlayer-container {
+            width: 100%;
+            height: 100%;
+            aspect-ratio: unset !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #video .csPlayer .csPlayer-container iframe {
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            position: static !important;
         }
 
         /* Force csPlayer controls to be visible (especially on mobile) */
         #video .csPlayer .csPlayer-controls-box {
             display: flex !important;
             align-items: flex-end;
+            justify-content: space-between;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding-bottom: 10px; /* give some space for the bottom bar */
         }
 
         #video .csPlayer .csPlayer-controls-box main,
         #video .csPlayer .csPlayer-controls-box .csPlayer-controls {
             transform: scale(1) !important;
+        }
+
+        /* Center the play/pause buttons */
+        #video .csPlayer .csPlayer-controls-box main {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1) !important;
+            margin: 0;
+            width: auto;
+        }
+
+        /* Ensure bottom controls stay at the bottom */
+        #video .csPlayer .csPlayer-controls-box .csPlayer-controls {
+            margin-top: auto;
+            width: 100%;
+            padding: 0 15px 10px 15px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
         }
     </style>
 </head>
@@ -73,26 +117,36 @@
                     var container = document.querySelector("#video .csPlayer-container");
                     if (!container) return;
 
-                    var started = false;
                     var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
-                    var startOnTap = function () {
-                        if (started) return;
-                        started = true;
+                    var handleTap = function (e) {
+                        // If the click/tap was on a control button, let the button handle it.
+                        if (e.target.closest(".csPlayer-controls-box main i") || 
+                            e.target.closest(".csPlayer-controls-box .csPlayer-controls")) {
+                            return;
+                        }
+
                         try {
                             var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                            if (playerObj && typeof playerObj.playVideo === "function") {
-                                playerObj.playVideo();
+                            if (playerObj && typeof playerObj.getPlayerState === "function") {
+                                var state = playerObj.getPlayerState();
+                                // -1 (unstarted), 2 (paused), 5 (cued) -> try to play
+                                // 1 (playing) -> do nothing or let default toggle happen
+                                if (state === -1 || state === 2 || state === 5) {
+                                    playerObj.playVideo();
+                                }
                             }
-                        } catch (e) {
-                            console.error(e);
+                        } catch (err) {
+                            console.error(err);
                         }
                     };
 
                     if (isTouch) {
-                        container.addEventListener("touchend", startOnTap, { once: true });
+                        // Use touchend for better responsiveness on mobile, remove 'once: true'
+                        container.addEventListener("touchend", handleTap);
                     } else {
-                        container.addEventListener("click", startOnTap, { once: true });
+                        // Desktop click
+                        container.addEventListener("click", handleTap);
                     }
                 });
             }
