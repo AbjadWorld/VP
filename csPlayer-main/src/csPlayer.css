@@ -163,8 +163,8 @@ justify-content: center;
 border-radius: 100%;
 background: var(--startBtnBg);
 font-size: calc(var(--startBtnSize)/2.5);
-pointer-events: auto;
-cursor: pointer;
+pointer-events: none;
+cursor: default;
 }
 .csPlayer-loading{
 color: transparent !important;
@@ -184,7 +184,7 @@ background: transparent !important;
 outline: none !important;
 border: none !important;
 position: absolute;
-pointer-events: auto;
+pointer-events: none;
 }
 .csPlayer .csPlayer-container span div:nth-of-type(1){
 top: 0;
