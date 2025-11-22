@@ -59,99 +59,27 @@
                     theme: "default",
                     loop: false
                 }).then(function () {
-                    // Dedicated Mobile Start Overlay
+                    // Fix csPlayer's bug: wire up the overlay divs that have pointer-events but no handlers
                     var container = document.querySelector("#video .csPlayer");
                     if (!container) return;
-
-                    // Create a high z-index overlay to capture the first interaction
-                    var startOverlay = document.createElement("div");
-                    startOverlay.className = "mobile-start-overlay";
-                    startOverlay.innerHTML = '<div class="play-icon">▶</div><div style="margin-top:20px;color:white;font-family:sans-serif;">Tap to Start</div>';
                     
-                    // Style it to cover everything
-                    Object.assign(startOverlay.style, {
-                        position: "fixed", // Changed to fixed to ensure it covers viewport
-                        top: "0",
-                        left: "0",
-                        width: "100%",
-                        height: "100%",
-                        background: "rgba(0,0,0,0.8)", // Darker background
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: "99999",
-                        cursor: "pointer"
-                    });
-
-                    // Style the icon
-                    var icon = startOverlay.querySelector(".play-icon");
-                    Object.assign(icon.style, {
-                        fontSize: "80px",
-                        color: "#fff",
-                        background: "rgba(255, 0, 0, 0.8)", // Red for visibility/confirmation
-                        borderRadius: "50%",
-                        width: "120px",
-                        height: "120px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        paddingLeft: "10px", // visual centering
-                        boxShadow: "0 0 20px rgba(0,0,0,0.5)"
-                    });
-
-                    document.body.appendChild(startOverlay); // Append to body instead of container
-
-                    function unlockVideo() {
-                        var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                    // Wait a bit for the iframe to load, then attach handlers to the overlay divs
+                    setTimeout(function() {
+                        var overlayDivs = container.querySelectorAll(".csPlayer-container span div");
                         
-                        if (!playerObj || typeof playerObj.playVideo !== "function") {
-                            return; 
+                        function startVideo(e) {
+                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                            if (playerObj && typeof playerObj.playVideo === "function") {
+                                playerObj.unMute();
+                                playerObj.playVideo();
+                            }
                         }
-
-                        try {
-                            // Update UI to show we are trying
-                            var text = startOverlay.querySelector("div:nth-child(2)");
-                            if (text) text.innerText = "Starting...";
-                            
-                            playerObj.unMute();
-                            playerObj.playVideo();
-                            
-                            // Don't remove immediately! Wait for state change.
-                            // We'll poll for success for a short time
-                            var checkInterval = setInterval(function() {
-                                var state = -1;
-                                try { state = playerObj.getPlayerState(); } catch(e){}
-                                
-                                // 1 = Playing, 3 = Buffering
-                                if (state === 1 || state === 3) {
-                                    startOverlay.remove();
-                                    clearInterval(checkInterval);
-                                }
-                            }, 200);
-                            
-                            // Fallback: if it doesn't start in 3s, reset text so user can tap again
-                            setTimeout(function() {
-                                if (startOverlay.parentElement) { // still in DOM
-                                    if (text) text.innerText = "Tap again";
-                                    clearInterval(checkInterval);
-                                }
-                            }, 3000);
-
-                        } catch (e) {
-                            console.error("Unlock error:", e);
-                        }
-                    }
-
-                    // Listen for both touch and click to ensure we catch the first one
-                    startOverlay.addEventListener("touchend", function(e) {
-                        // e.preventDefault(); // REMOVED: This kills the user gesture on some devices!
-                        unlockVideo();
-                    });
-
-                    startOverlay.addEventListener("click", function(e) {
-                        unlockVideo();
-                    });
+                        
+                        overlayDivs.forEach(function(div) {
+                            div.addEventListener("click", startVideo);
+                            div.addEventListener("touchend", startVideo);
+                        });
+                    }, 500);
                 });
             }
 
