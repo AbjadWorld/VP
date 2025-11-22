@@ -6,7 +6,8 @@
     <title>Abjad Player</title>
 
     <script src="https://www.youtube.com/iframe_api"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.css" />
+    <!-- Use local fixed version -->
+    <link rel="stylesheet" href="./csPlayer-main/src/csPlayer.css" />
 
     <style>
         html, body {
@@ -38,7 +39,8 @@
 <body>
     <div id="video"></div>
 
-    <script src="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.js"></script>
+    <!-- Use local fixed version -->
+    <script src="./csPlayer-main/src/csPlayer.js"></script>
     <script>
         (function () {
             function getVideoIdFromUrl() {
@@ -58,92 +60,6 @@
                     thumbnail: true,
                     theme: "default",
                     loop: false
-                }).then(function () {
-                    // Fix csPlayer's bug: wire up the overlay divs that have pointer-events but no handlers
-                    var container = document.querySelector("#video .csPlayer");
-                    if (!container) return;
-                    
-                    // Wait a bit for the iframe to load, then attach handlers to the overlay divs
-                    setTimeout(function() {
-                        var overlayDivs = container.querySelectorAll(".csPlayer-container span div");
-                        
-                        function startVideo(e) {
-                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                            if (playerObj && typeof playerObj.playVideo === "function") {
-                                playerObj.unMute();
-                                playerObj.playVideo();
-                            }
-                        }
-                        
-                        overlayDivs.forEach(function(div) {
-                            div.addEventListener("click", startVideo);
-                            div.addEventListener("touchend", startVideo);
-                        });
-                    }, 500);
-
-                    // Custom "Double Tap" Overlay
-                    var overlay = document.createElement("div");
-                    overlay.className = "double-tap-overlay";
-                    overlay.innerHTML = `
-                        <div class="tap-icon">👆</div>
-                        <div class="tap-text"> اضغط مرتين </div>
-                    `;
-                    
-                    // Add styles for the overlay and animation
-                    var style = document.createElement("style");
-                    style.innerHTML = `
-                        .csPlayer .csPlayer-container span i { display: none !important; } /* Hide default play button */
-                        
-                        .double-tap-overlay {
-                            position: absolute;
-                            top: 0;
-                            left: 0;
-                            width: 100%;
-                            height: 100%;
-                            background: rgba(0,0,0,0.4);
-                            display: flex;
-                            flex-direction: column;
-                            align-items: center;
-                            justify-content: center;
-                            z-index: 10;
-                            pointer-events: none; /* Let clicks pass through to the container */
-                        }
-                        .tap-icon {
-                            font-size: 60px;
-                            animation: double-tap-anim 2s infinite;
-                        }
-                        .tap-text {
-                            color: white;
-                            font-family: sans-serif;
-                            font-weight: bold;
-                            margin-top: 10px;
-                            font-size: 1.2rem;
-                            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-                        }
-                        /* Tic Tic ------ Tic Tic */
-                        @keyframes double-tap-anim {
-                            0%   { transform: scale(1); opacity: 0.7; }
-                            10%  { transform: scale(0.8); opacity: 1; } /* Tic */
-                            20%  { transform: scale(1); opacity: 0.7; }
-                            30%  { transform: scale(0.8); opacity: 1; } /* Tic */
-                            40%  { transform: scale(1); opacity: 0.7; }
-                            100% { transform: scale(1); opacity: 0.7; } /* ------ */
-                        }
-                    `;
-                    document.head.appendChild(style);
-                    container.appendChild(overlay);
-                    
-                    // Remove overlay when video starts
-                    var checkStart = setInterval(function() {
-                        var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                        if (playerObj && typeof playerObj.getPlayerState === "function") {
-                            var state = playerObj.getPlayerState();
-                            if (state === 1 || state === 3) { // Playing or Buffering
-                                overlay.style.display = "none";
-                                clearInterval(checkStart);
-                            }
-                        }
-                    }, 500);
                 });
             }
 
