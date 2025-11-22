@@ -293,7 +293,18 @@
                         debugLog("Play area found: " + !!mainArea);
                         
                         if (mainArea) {
+                            var lastTapTime = 0;
                             var forcePlay = function(evt) {
+                                // Debounce: ignore events that happen within 300ms of the last one
+                                var now = new Date().getTime();
+                                if (now - lastTapTime < 300) {
+                                    evt.stopPropagation();
+                                    evt.stopImmediatePropagation();
+                                    evt.preventDefault();
+                                    return;
+                                }
+                                lastTapTime = now;
+
                                 debugLog("Center play area clicked!");
                                 evt.stopPropagation();
                                 evt.stopImmediatePropagation();
@@ -303,7 +314,7 @@
                                     var state = csPlayer.getPlayerState("video");
                                     debugLog("Player state: " + state);
                                     
-                                    if (state === "playing") {
+                                    if (state === "playing" || state === "buffering") {
                                         debugLog("Pausing video...");
                                         csPlayer.pause("video");
                                     } else {
@@ -321,14 +332,15 @@
                                         setTimeout(function() {
                                             var newState = csPlayer.getPlayerState("video");
                                             debugLog("State after play: " + newState);
-                                            if (newState !== "playing") {
+                                            // Accept both 'playing' and 'buffering' as success
+                                            if (newState !== "playing" && newState !== "buffering") {
                                                 debugLog("Retrying play...");
                                                 var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
                                                 if (playerObj && typeof playerObj.playVideo === "function") {
                                                     playerObj.playVideo();
                                                 }
                                             }
-                                        }, 200);
+                                        }, 250);
                                     }
                                 } catch (err) {
                                     debugLog("Play btn error: " + err.message);
