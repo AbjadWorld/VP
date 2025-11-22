@@ -59,27 +59,36 @@
                     theme: "default",
                     loop: false
                 }).then(function () {
-                    // Fix csPlayer's bug: wire up the overlay divs that have pointer-events but no handlers
+                    // One-time click handler to ensure first tap works on mobile
                     var container = document.querySelector("#video .csPlayer");
                     if (!container) return;
                     
-                    // Wait a bit for the iframe to load, then attach handlers to the overlay divs
-                    setTimeout(function() {
-                        var overlayDivs = container.querySelectorAll(".csPlayer-container span div");
+                    var firstPlayTriggered = false;
+                    
+                    function handleFirstPlay(e) {
+                        if (firstPlayTriggered) return;
                         
-                        function startVideo(e) {
-                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                            if (playerObj && typeof playerObj.playVideo === "function") {
-                                playerObj.unMute();
-                                playerObj.playVideo();
-                            }
+                        var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                        if (!playerObj || typeof playerObj.playVideo !== "function") return;
+                        
+                        try {
+                            playerObj.unMute();
+                            playerObj.playVideo();
+                            firstPlayTriggered = true;
+                            
+                            // Remove this handler after first successful play
+                            setTimeout(function() {
+                                container.removeEventListener("click", handleFirstPlay, true);
+                                container.removeEventListener("touchend", handleFirstPlay, true);
+                            }, 100);
+                        } catch(err) {
+                            console.error("First play error:", err);
                         }
-                        
-                        overlayDivs.forEach(function(div) {
-                            div.addEventListener("click", startVideo);
-                            div.addEventListener("touchend", startVideo);
-                        });
-                    }, 500);
+                    }
+                    
+                    // Use capture phase to ensure we get the event first
+                    container.addEventListener("click", handleFirstPlay, true);
+                    container.addEventListener("touchend", handleFirstPlay, true);
                 });
             }
 
