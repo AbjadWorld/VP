@@ -1,387 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Abjad Player</title>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Player</title>
     <script src="https://www.youtube.com/iframe_api"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.css" />
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.css">
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
+        /* Reset and Fullscreen */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+        
+        #video {
             width: 100%;
             height: 100%;
-            background: #000;
-        }
-
-        body {
-            overflow: hidden;
-        }
-
-        #video {
-            width: 100vw;
-            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-
+        
         #video .csPlayer {
             width: 100%;
             height: 100%;
-            max-width: 100vw;
-            max-height: 100vh;
             --playerBg: #000;
-            --playerColor: #fff;
-            --settingsBg: #181818;
-            /* Keep 16:9 aspect ratio but fit within viewport */
-            aspect-ratio: 16/9 !important;
-            min-width: 0 !important;
         }
 
-        /* Responsive sizing for different orientations */
-        @media (orientation: landscape) {
-            #video .csPlayer {
-                width: auto;
-                height: 100vh;
-            }
-        }
-
-        @media (orientation: portrait) {
-            #video .csPlayer {
-                width: 100vw;
-                height: auto;
-            }
-        }
-
-        #video .csPlayer .csPlayer-container {
-            width: 100%;
-            height: 100%;
-            aspect-ratio: 16/9 !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            position: relative;
-        }
-
+        /* Ensure iframe fills container */
         #video .csPlayer .csPlayer-container iframe {
-            /* Restore csPlayer's original sizing to hide YouTube UI */
-            width: 2400% !important;
+            width: 100% !important;
             height: 100% !important;
-            margin-left: -1149.95% !important;
-            position: absolute !important;
-            top: 0;
-            left: 0;
+            position: absolute;
+            top: 0; left: 0;
         }
-
-        /* Force csPlayer controls to be visible (especially on mobile) */
+        
+        /* Force Controls visibility on Mobile */
         #video .csPlayer .csPlayer-controls-box {
             display: flex !important;
-            align-items: flex-end;
-            justify-content: space-between;
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            padding-bottom: 10px; /* give some space for the bottom bar */
-            z-index: 2147483647 !important; /* Max z-index to ensure it's on top */
-            pointer-events: none; /* Let clicks pass through to specific buttons if needed, but we'll re-enable on children */
-        }
-
-        #video .csPlayer .csPlayer-controls-box main,
-        #video .csPlayer .csPlayer-controls-box .csPlayer-controls {
-            transform: scale(1) !important;
-            pointer-events: auto !important; /* Re-enable clicks on controls */
-        }
-
-        /* Center the play/pause buttons */
-        #video .csPlayer .csPlayer-controls-box main {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(1) !important;
-            margin: 0;
-            width: auto;
-            z-index: 2147483647 !important;
-        }
-
-        /* Ensure bottom controls stay at the bottom */
-        #video .csPlayer .csPlayer-controls-box .csPlayer-controls {
-            margin-top: auto;
-            width: 100%;
-            padding: 0 15px 10px 15px;
-            background: linear-gradient(transparent, rgba(0,0,0,0.7));
-            position: absolute;
-            bottom: 30px; /* Move up to avoid being cut off */
-            left: 0;
-            z-index: 2147483647 !important;
-            display: flex !important; /* Force flex layout */
-        }
-
-        /* Hide Settings and Fullscreen buttons */
-        #video .csPlayer .csPlayer-controls-box .csPlayer-controls .settingsBtn,
-        #video .csPlayer .csPlayer-controls-box .csPlayer-controls .fsBtn {
-            display: none !important;
-        }
-
-        /* Debug panel for Unity WebView */
-        #debugPanel {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #0f0;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 12px;
-            max-width: 300px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 2147483647;
-            border: 2px solid #0f0;
-            border-radius: 5px;
-        }
-        #debugPanel div {
-            margin: 2px 0;
-            word-wrap: break-word;
+            z-index: 9999;
         }
     </style>
 </head>
 <body>
     <div id="video"></div>
-    <div id="debugPanel"></div>
 
     <script src="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.js"></script>
     <script>
-        (function () {
-            // Visual debug function for Unity WebView
-            var debugLog = function(msg) {
-                console.log(msg);
-                var panel = document.getElementById('debugPanel');
-                if (panel) {
-                    var entry = document.createElement('div');
-                    entry.textContent = new Date().toLocaleTimeString() + ': ' + msg;
-                    panel.appendChild(entry);
-                    panel.scrollTop = panel.scrollHeight;
-                    // Keep only last 10 messages
-                    while (panel.children.length > 10) {
-                        panel.removeChild(panel.firstChild);
-                    }
-                }
-            };
+        function getVideoId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("v") || params.get("id") || "oZQWf8TJooI";
+        }
 
-            function getVideoIdFromUrl() {
-                var params = new URLSearchParams(window.location.search);
-                var id = params.get("v") || params.get("id");
-                if (!id || !id.trim()) {
-                    return "oZQWf8TJooI";
-                }
-                return id.trim();
-            }
-
-            function initCsPlayer() {
-                var videoId = getVideoIdFromUrl();
-                debugLog("Initializing player with ID: " + videoId);
-
-                // Add iframe observer BEFORE init to catch the iframe creation
-                var iframeObserver = new MutationObserver(function(mutations) {
-                    mutations.forEach(function(mutation) {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.tagName === 'IFRAME' && node.src && node.src.includes('youtube.com')) {
-                                debugLog("YouTube iframe detected");
-                                node.setAttribute('allow', 'autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture; encrypted-media');
-                                node.setAttribute('allowfullscreen', 'true');
-                                debugLog("Iframe permissions set");
-                            }
-                        });
+        function initPlayer() {
+            // Unity WebView Fix: Add permissions to iframe
+            new MutationObserver((mutations) => {
+                mutations.forEach((m) => {
+                    m.addedNodes.forEach((n) => {
+                        if (n.tagName === 'IFRAME' && n.src.includes('youtube')) {
+                            n.setAttribute('allow', 'autoplay; encrypted-media; fullscreen; picture-in-picture');
+                        }
                     });
                 });
-                
-                iframeObserver.observe(document.body, { childList: true, subtree: true });
-                
-                // Check if we're in Unity WebView
-                if (typeof window.unityInstance !== 'undefined' || navigator.userAgent.includes('UnityPlayer')) {
-                    debugLog("Unity WebView detected - ensure hardware acceleration is enabled in Unity");
-                }
+            }).observe(document.body, { childList: true, subtree: true });
 
-                csPlayer.init("video", {
-                    defaultId: videoId,
-                    thumbnail: true,
-                    theme: "default",
-                    loop: false
-                }).then(function () {
-                    var container = document.querySelector("#video .csPlayer-container");
-                    if (!container) return;
+            csPlayer.init("video", {
+                defaultId: getVideoId(),
+                thumbnail: true,
+                theme: "default",
+                loop: false
+            }).then(() => {
+                // Add robust click handler for the play button
+                setupPlayButton();
+            });
+        }
 
-                    // Extra safeguard: ensure video is paused on load (no autoplay)
-                    setTimeout(function() {
-                        try {
-                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                            if (playerObj && typeof playerObj.pauseVideo === "function") {
-                                playerObj.pauseVideo();
-                                debugLog("Video paused on init");
-                            }
-                        } catch (e) {
-                            debugLog("Pause on init error: " + e.message);
-                        }
-                    }, 500);
+        function setupPlayButton() {
+            // We need to attach to the center play button specifically
+            // In csPlayer structure, it's usually inside .csPlayer-controls-box main
+            const checkForButton = setInterval(() => {
+                const mainBtn = document.querySelector("#video .csPlayer-controls-box main");
+                if (mainBtn) {
+                    clearInterval(checkForButton);
+                    
+                    // The Magic Fix for Unity WebView:
+                    // Intercept the click, Mute -> Play -> Unmute
+                    const forcePlay = (e) => {
+                        // If already playing, let csPlayer handle pause normally
+                        if (csPlayer.getPlayerState("video") === 'playing') return;
 
-                    var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+                        e.stopPropagation(); // Stop csPlayer's default handling
+                        e.preventDefault();
 
-                    var handleTap = function (e) {
-                        // Only block bottom controls, allow center play button
-                        var bottomControls = e.target.closest(".csPlayer-controls-box .csPlayer-controls:not(main)");
-                        if (bottomControls && !e.target.closest("main")) {
-                            return;
-                        }
-
-                        debugLog("Video area tapped");
-                        try {
-                            var state = csPlayer.getPlayerState("video");
-                            debugLog("Current state: " + state);
-                            
-                            if (state === "playing") {
-                                // Use csPlayer API for pause (always works)
-                                csPlayer.pause("video");
-                                debugLog("Video paused");
-                            } else {
-                                // Always use direct YouTube API for play (bypasses csPlayer restriction)
-                                debugLog("Using direct API for play");
-                                var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                                if (playerObj && typeof playerObj.playVideo === "function") {
-                                    // Kickstart: Mute -> Play -> Unmute (fixes stuck buffering)
-                                    if (typeof playerObj.mute === "function") {
-                                        playerObj.mute();
-                                    }
-                                    playerObj.playVideo();
-                                    debugLog("Kickstart: Mute -> Play");
-                                    
-                                    // Unmute after 1 second
-                                    setTimeout(function() {
-                                        if (typeof playerObj.unMute === "function") {
-                                            playerObj.unMute();
-                                            debugLog("Unmuted");
-                                        }
-                                    }, 1000);
-                                } else {
-                                    debugLog("Player object not found");
-                                }
-                                
-                                // Verify it worked
-                                setTimeout(function() {
-                                    var newState = csPlayer.getPlayerState("video");
-                                    debugLog("State after tap: " + newState);
-                                }, 200);
-                            }
-                        } catch (err) {
-                            debugLog("Play error: " + err.message);
+                        const player = csPlayer.csPlayers["video"].videoTag;
+                        if (player && typeof player.playVideo === 'function') {
+                            if (typeof player.mute === 'function') player.mute();
+                            player.playVideo();
+                            setTimeout(() => {
+                                if (typeof player.unMute === 'function') player.unMute();
+                            }, 1000);
                         }
                     };
+                    
+                    // Use capture phase to ensure we get the event before csPlayer
+                    mainBtn.addEventListener('click', forcePlay, true);
+                    mainBtn.addEventListener('touchend', forcePlay, true);
+                }
+            }, 500);
+        }
 
-                    if (isTouch) {
-                        // Use touchend for better responsiveness on mobile, remove 'once: true'
-                        container.addEventListener("touchend", handleTap);
-                    } else {
-                        // Desktop click
-                        container.addEventListener("click", handleTap);
-                    }
-
-                    // Extra fix for Unity WebView: directly wire the center play area
-                    setTimeout(function() {
-                        // Target the entire main area, not just the button
-                        var mainArea = document.querySelector("#video .csPlayer-controls-box main");
-                        debugLog("Play area found: " + !!mainArea);
-                        
-                        if (mainArea) {
-                            var lastTapTime = 0;
-                            var forcePlay = function(evt) {
-                                // Debounce: ignore events that happen within 300ms of the last one
-                                var now = new Date().getTime();
-                                if (now - lastTapTime < 300) {
-                                    evt.stopPropagation();
-                                    evt.stopImmediatePropagation();
-                                    evt.preventDefault();
-                                    return;
-                                }
-                                lastTapTime = now;
-
-                                debugLog("Center play area clicked!");
-                                evt.stopPropagation();
-                                evt.stopImmediatePropagation();
-                                evt.preventDefault();
-                                
-                                try {
-                                    var state = csPlayer.getPlayerState("video");
-                                    debugLog("Player state: " + state);
-                                    
-                                    if (state === "playing" || state === "buffering") {
-                                        debugLog("Pausing video...");
-                                        csPlayer.pause("video");
-                                    } else {
-                                        // Always use direct YouTube API for play
-                                        debugLog("Using direct API for play");
-                                        var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                                        if (playerObj && typeof playerObj.playVideo === "function") {
-                                            // Kickstart: Mute -> Play -> Unmute (fixes stuck buffering)
-                                            if (typeof playerObj.mute === "function") {
-                                                playerObj.mute();
-                                            }
-                                            playerObj.playVideo();
-                                            debugLog("Kickstart: Mute -> Play");
-                                            
-                                            // Unmute after 1 second
-                                            setTimeout(function() {
-                                                if (typeof playerObj.unMute === "function") {
-                                                    playerObj.unMute();
-                                                    debugLog("Unmuted");
-                                                }
-                                            }, 1000);
-                                        } else {
-                                            debugLog("Player object not found");
-                                        }
-                                        
-                                        // Double-check after a moment
-                                        setTimeout(function() {
-                                            var newState = csPlayer.getPlayerState("video");
-                                            debugLog("State after play: " + newState);
-                                            // Accept both 'playing' and 'buffering' as success
-                                            if (newState !== "playing" && newState !== "buffering") {
-                                                debugLog("Retrying play...");
-                                                var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                                                if (playerObj && typeof playerObj.playVideo === "function") {
-                                                    playerObj.playVideo();
-                                                }
-                                            }
-                                        }, 250);
-                                    }
-                                } catch (err) {
-                                    debugLog("Play btn error: " + err.message);
-                                }
-                            };
-                            
-                            // Use capture phase to intercept before csPlayer's handlers
-                            mainArea.addEventListener("click", forcePlay, true);
-                            mainArea.addEventListener("touchend", forcePlay, true);
-                            mainArea.addEventListener("touchstart", forcePlay, true);
-                            
-                            // Also add pointer events for better compatibility
-                            mainArea.addEventListener("pointerdown", forcePlay, true);
-                        }
-                    }, 1000);
-                });
-            }
-
-            if (window.YT && typeof YT.Player === "function") {
-                initCsPlayer();
-            } else {
-                window.onYouTubeIframeAPIReady = initCsPlayer;
-            }
-        })();
+        if (window.YT && YT.Player) {
+            initPlayer();
+        } else {
+            window.onYouTubeIframeAPIReady = initPlayer;
+        }
     </script>
 </body>
 </html>
