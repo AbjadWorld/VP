@@ -196,13 +196,6 @@
                                 debugLog("YouTube iframe detected");
                                 node.setAttribute('allow', 'autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture; encrypted-media');
                                 node.setAttribute('allowfullscreen', 'true');
-                                
-                                // Ensure autoplay is in the URL
-                                if (node.src.indexOf('autoplay=') === -1) {
-                                    var separator = node.src.includes('?') ? '&' : '?';
-                                    node.src = node.src + separator + 'autoplay=1';
-                                }
-                                
                                 debugLog("Iframe permissions set");
                             }
                         });
@@ -261,8 +254,20 @@
                                 debugLog("Using direct API for play");
                                 var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
                                 if (playerObj && typeof playerObj.playVideo === "function") {
+                                    // Kickstart: Mute -> Play -> Unmute (fixes stuck buffering)
+                                    if (typeof playerObj.mute === "function") {
+                                        playerObj.mute();
+                                    }
                                     playerObj.playVideo();
-                                    debugLog("Video playing (direct API)");
+                                    debugLog("Kickstart: Mute -> Play");
+                                    
+                                    // Unmute after 1 second
+                                    setTimeout(function() {
+                                        if (typeof playerObj.unMute === "function") {
+                                            playerObj.unMute();
+                                            debugLog("Unmuted");
+                                        }
+                                    }, 1000);
                                 } else {
                                     debugLog("Player object not found");
                                 }
@@ -322,8 +327,20 @@
                                         debugLog("Using direct API for play");
                                         var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
                                         if (playerObj && typeof playerObj.playVideo === "function") {
+                                            // Kickstart: Mute -> Play -> Unmute (fixes stuck buffering)
+                                            if (typeof playerObj.mute === "function") {
+                                                playerObj.mute();
+                                            }
                                             playerObj.playVideo();
-                                            debugLog("Playing video (direct API)");
+                                            debugLog("Kickstart: Mute -> Play");
+                                            
+                                            // Unmute after 1 second
+                                            setTimeout(function() {
+                                                if (typeof playerObj.unMute === "function") {
+                                                    playerObj.unMute();
+                                                    debugLog("Unmuted");
+                                                }
+                                            }, 1000);
                                         } else {
                                             debugLog("Player object not found");
                                         }
