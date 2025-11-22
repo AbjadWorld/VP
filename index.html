@@ -188,6 +188,34 @@
                 var videoId = getVideoIdFromUrl();
                 debugLog("Initializing player with ID: " + videoId);
 
+                // Add iframe observer BEFORE init to catch the iframe creation
+                var iframeObserver = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.tagName === 'IFRAME' && node.src && node.src.includes('youtube.com')) {
+                                debugLog("YouTube iframe detected");
+                                node.setAttribute('allow', 'autoplay; fullscreen; accelerometer; gyroscope; picture-in-picture; encrypted-media');
+                                node.setAttribute('allowfullscreen', 'true');
+                                
+                                // Ensure autoplay is in the URL
+                                if (node.src.indexOf('autoplay=') === -1) {
+                                    var separator = node.src.includes('?') ? '&' : '?';
+                                    node.src = node.src + separator + 'autoplay=1';
+                                }
+                                
+                                debugLog("Iframe permissions set");
+                            }
+                        });
+                    });
+                });
+                
+                iframeObserver.observe(document.body, { childList: true, subtree: true });
+                
+                // Check if we're in Unity WebView
+                if (typeof window.unityInstance !== 'undefined' || navigator.userAgent.includes('UnityPlayer')) {
+                    debugLog("Unity WebView detected - ensure hardware acceleration is enabled in Unity");
+                }
+
                 csPlayer.init("video", {
                     defaultId: videoId,
                     thumbnail: true,
