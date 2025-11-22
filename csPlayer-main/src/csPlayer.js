@@ -88,64 +88,78 @@ return new Promise((resolve, reject) => {
      cc_load_policy: 3,
      showinfo: 0,
      iv_load_policy: 3,     
-    },
+    },
      events:{
      'onReady':()=>{
 if($("#"+videoTag) != null && videoTag){
 
-      // DEBUG: On-screen logger
-      function logToScreen(msg) {
-          var debugConsole = document.getElementById("cs-debug-console");
-          if (!debugConsole) {
-              debugConsole = document.createElement("div");
-              debugConsole.id = "cs-debug-console";
-              debugConsole.style.cssText = "position:fixed; top:0; left:0; width:100%; height:200px; overflow:hidden; pointer-events:none; z-index:99999; color:#0f0; text-shadow:1px 1px 1px #000; font-family:monospace; font-size:12px; background:rgba(0,0,0,0.2); padding:5px;";
-              document.body.appendChild(debugConsole);
-          }
-          var line = document.createElement("div");
-          line.innerText = "> " + msg;
-          debugConsole.prepend(line); // Newest on top
-          // Keep only last 10 lines
-          if (debugConsole.children.length > 10) debugConsole.lastChild.remove();
-      }
-
       // FIX: Wire up the overlay divs AND the icon to force PLAY (not toggle)
       // Listeners attached IMMEDIATELY to avoid dead clicks during init
       function safePlay(e) {
-          var msg = "SafePlay: " + e.target.tagName + "." + e.target.className;
-          console.log(msg);
-          logToScreen(msg);
-          
           e.stopPropagation(); 
           e.preventDefault();
-          
+          console.log("[csPlayer] safePlay triggered",{
+          eventType:e.type,
+          targetTag:e.target.tagName,
+          targetClass:e.target.className
+          });
           if(csPlayer.csPlayers[videoTag]["videoTag"] && typeof csPlayer.csPlayers[videoTag]["videoTag"].playVideo === "function") {
-              logToScreen("Calling playVideo()...");
               csPlayer.csPlayers[videoTag]["videoTag"].unMute();
               csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
-          } else {
-              logToScreen("Error: PlayerObj not ready");
           }
       }
       var parent = document.querySelector("#"+playerTagId).closest(".csPlayer");
-      
-      // Debug: Log ALL clicks on the container to see what is being hit
-      parent.addEventListener("click", function(e) {
-          var msg = "Global Click: " + e.target.tagName + "." + e.target.className;
-          console.log(msg);
-          logToScreen(msg);
-      }, true); // Capture phase
-
-      // FIX: Attach safePlay to the MAIN SPAN (which now has pointer-events: auto)
-      // This covers the entire player area, ensuring NO dead zones.
-      var mainOverlay = parent.querySelector(".csPlayer-container span");
-      logToScreen("Attaching to Main Overlay");
-      
-      mainOverlay.addEventListener("click", safePlay);
-      mainOverlay.addEventListener("touchend", safePlay);
-      
-      // Also attach to children just in case, though bubbling should handle it
-      parent.querySelectorAll(".csPlayer-container span *").forEach(el => {
+      var debugOverlay = parent.querySelector(".csPlayer-debug-overlay");
+      if(!debugOverlay){
+      debugOverlay = document.createElement("div");
+      debugOverlay.className = "csPlayer-debug-overlay";
+      parent.appendChild(debugOverlay);
+      }
+      function logClickZone(e){
+      try{
+      var container = parent.querySelector(".csPlayer-container");
+      if(!container){return;}
+      var rect = container.getBoundingClientRect();
+      var clientX = e.clientX;
+      var clientY = e.clientY;
+      if(e.touches && e.touches[0]){
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+      }else if(e.changedTouches && e.changedTouches[0]){
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+      }
+      if(!(rect.width && rect.height)){return;}
+      var relX = (clientX - rect.left)/rect.width;
+      var relY = (clientY - rect.top)/rect.height;
+      if(relX < 0 || relX > 1 || relY < 0 || relY > 1){return;}
+      var horiz = relX < 0.33 ? "left" : (relX > 0.66 ? "right" : "center");
+      var vert = relY < 0.5 ? "top" : "bottom";
+      console.log("[csPlayer] zone click",{
+      eventType:e.type,
+      zone:horiz+"-"+vert,
+      relX:relX,
+      relY:relY,
+      clientX:clientX,
+      clientY:clientY,
+      targetTag:e.target.tagName,
+      targetClass:e.target.className
+      });
+      if(debugOverlay){
+      var safeRelX = isFinite(relX) ? relX.toFixed(2) : relX;
+      var safeRelY = isFinite(relY) ? relY.toFixed(2) : relY;
+      debugOverlay.innerText =
+      "event: " + e.type + " | zone: " + horiz+"-"+vert +
+      "\nrelX: " + safeRelX + " relY: " + safeRelY +
+      "\n" + e.target.tagName + " ." + e.target.className;
+      }
+      }catch(err){
+      console.error("[csPlayer] zone log error",err);
+      }}
+      ["click","touchstart","touchend"].forEach(function(type){
+      parent.addEventListener(type,logClickZone,true);
+      });
+      parent.querySelectorAll(".csPlayer-container span div, .csPlayer-container span i").forEach(el => {
           el.addEventListener("click", safePlay);
           el.addEventListener("touchend", safePlay);
       });
@@ -172,6 +186,7 @@ csPlayer.csPlayers[videoTag]["TextTimeInterval"] = setInterval(updateTextTime,10
 }); //promise
 //backward 
 function backward(){
+console.log("[csPlayer] backward()");
 updateTextTime()
 updateTimeSlider()
 var currentTime = csPlayer.csPlayers[videoTag]["videoTag"].getCurrentTime();
@@ -181,6 +196,7 @@ controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box")
 }
 //forward
 function forward(){
+console.log("[csPlayer] forward()");
 updateTextTime()
 updateTimeSlider()
 var currentTime = csPlayer.csPlayers[videoTag]["videoTag"].getCurrentTime();
@@ -190,6 +206,7 @@ controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box")
 }
 //togglePlayPause
 function togglePlayPause(){
+console.log("[csPlayer] togglePlayPause()",csPlayer.csPlayers[videoTag]["isPlaying"]);
 if(csPlayer.csPlayers[videoTag]["isPlaying"]){
 csPlayer.csPlayers[videoTag]["videoTag"].pauseVideo();
 clearTimeout(controlsTimeout);
@@ -229,6 +246,7 @@ slider.style.background =`linear-gradient(to right, var(--sliderSeekTrackColor) 
 parent.querySelector(".csPlayer-controls-box .csPlayer-controls div span").style.width = loaded+"%";
 }
 function updateSlider(){
+console.log("[csPlayer] updateSlider()");
 clearTimeout(controlsTimeout);
 var slider = parent.querySelector(".csPlayer-controls-box .csPlayer-controls div input");
 var duration = csPlayer.csPlayers[videoTag]["videoTag"].getDuration();
@@ -240,6 +258,7 @@ controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box")
 }
 //fullscreen
 function toggleFullscreen(){
+console.log("[csPlayer] toggleFullscreen()");
 const videoContainer = parent;  
 if(!document.fullscreenElement && document.fullscreenEnabled){
  if(videoContainer.requestFullscreen){
@@ -250,7 +269,7 @@ if(!document.fullscreenElement && document.fullscreenEnabled){
  videoContainer.webkitRequestFullscreen();
  }else if(videoContainer.msRequestFullscreen){
  videoContainer.msRequestFullscreen();
-}}
+ }}
 else if(document.fullscreenElement && document.fullscreenEnabled){
  if(document.exitFullscreen){
  document.exitFullscreen();
@@ -260,7 +279,7 @@ else if(document.fullscreenElement && document.fullscreenEnabled){
  document.webkitExitFullscreen();
  }else if(document.msExitFullscreen){
  document.msExitFullscreen();
-}}else{
+ }}else{
 console.warn("Fullscreen api not supported in your browser.");
 }}
 //settings
@@ -271,6 +290,7 @@ pin.nextElementSibling.style.maxHeight ="0px";
 });
 }
 function toggleSettings(){
+console.log("[csPlayer] toggleSettings()");
 const targetElement = parent.querySelector(".csPlayer-controls-box");
 var settings = parent.querySelector(".csPlayer-controls-box .csPlayer-settings-box");
 var qualities = csPlayer.csPlayers[videoTag]["videoTag"].getAvailableQualityLevels();
@@ -335,6 +355,7 @@ settings.querySelector("p:nth-of-type(2) b").innerText = value;
 
 
 function onPlayerStateChange(event){
+console.log("[csPlayer] onPlayerStateChange",event.data);
 if(event.data == YT.PlayerState.PLAYING){
 csPlayer.csPlayers[videoTag]["isPlaying"] = true;
 csPlayer.csPlayers[videoTag]["playerState"] ="playing";
