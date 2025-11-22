@@ -59,25 +59,41 @@
                     theme: "default",
                     loop: false
                 }).then(function () {
-                    var container = document.querySelector("#video .csPlayer-container");
+                    // Robust mobile play handling
+                    var container = document.querySelector("#video .csPlayer");
                     if (!container) return;
 
-                    var started = false;
-                    var startOnTap = function () {
-                        if (started) return;
-                        started = true;
+                    function forcePlay() {
                         try {
                             var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
                             if (playerObj && typeof playerObj.playVideo === "function") {
-                                playerObj.playVideo();
+                                // If unstarted or paused/cued, force play
+                                var state = -1;
+                                try { state = playerObj.getPlayerState(); } catch (err) {}
+                                
+                                // -1 (unstarted), 2 (paused), 5 (cued)
+                                if (state === -1 || state === 2 || state === 5) {
+                                    playerObj.playVideo();
+                                }
                             }
                         } catch (e) {
-                            console.error(e);
+                            console.error("Force play error:", e);
                         }
-                    };
+                    }
 
-                    container.addEventListener("click", startOnTap, { once: true });
-                    container.addEventListener("touchstart", startOnTap, { once: true });
+                    // Attach to the overlay span (which holds the play button)
+                    var overlay = container.querySelector(".csPlayer-container span");
+                    if (overlay) {
+                        // Handle touch end specifically for mobile responsiveness
+                        overlay.addEventListener("touchend", function(e) {
+                            forcePlay();
+                        }, { passive: true });
+                        
+                        // Handle click for desktop / fallback
+                        overlay.addEventListener("click", function(e) {
+                            forcePlay();
+                        });
+                    }
                 });
             }
 
