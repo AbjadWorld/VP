@@ -33,26 +33,10 @@
             --playerColor: #fff;
             --settingsBg: #181818;
         }
-        
-        /* Transparent overlay to force initial play on mobile */
-        #mobile-start-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 9999;
-            background: transparent; /* Keep it transparent or add a big play icon if preferred */
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
     </style>
 </head>
 <body>
     <div id="video"></div>
-    <div id="mobile-start-overlay"></div>
 
     <script src="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.js"></script>
     <script>
@@ -75,37 +59,71 @@
                     theme: "default",
                     loop: false
                 }).then(function () {
-                    // Logic for the mobile start overlay
-                    var startOverlay = document.getElementById("mobile-start-overlay");
+                    // Dedicated Mobile Start Overlay
+                    var container = document.querySelector("#video .csPlayer");
+                    if (!container) return;
+
+                    // Create a high z-index overlay to capture the first interaction
+                    var startOverlay = document.createElement("div");
+                    startOverlay.className = "mobile-start-overlay";
+                    startOverlay.innerHTML = '<div class="play-icon">▶</div>';
                     
-                    function initialPlay() {
+                    // Style it to cover everything
+                    Object.assign(startOverlay.style, {
+                        position: "absolute",
+                        top: "0",
+                        left: "0",
+                        width: "100%",
+                        height: "100%",
+                        background: "rgba(0,0,0,0.4)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: "10000",
+                        cursor: "pointer"
+                    });
+
+                    // Style the icon
+                    var icon = startOverlay.querySelector(".play-icon");
+                    Object.assign(icon.style, {
+                        fontSize: "80px",
+                        color: "#fff",
+                        background: "rgba(0,0,0,0.6)",
+                        borderRadius: "50%",
+                        width: "120px",
+                        height: "120px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingLeft: "10px", // visual centering
+                        boxShadow: "0 0 20px rgba(0,0,0,0.5)"
+                    });
+
+                    container.appendChild(startOverlay);
+
+                    function unlockVideo() {
                         try {
                             var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
                             if (playerObj && typeof playerObj.playVideo === "function") {
+                                playerObj.unMute();
                                 playerObj.playVideo();
                             }
                         } catch (e) {
-                            console.error("Initial play error:", e);
+                            console.error("Unlock error:", e);
                         }
-                        
-                        // Remove the overlay so subsequent clicks go to the player controls
-                        if (startOverlay && startOverlay.parentNode) {
-                            startOverlay.parentNode.removeChild(startOverlay);
-                        }
+                        // Remove overlay immediately
+                        startOverlay.remove();
                     }
 
-                    if (startOverlay) {
-                        // Use touchend for immediate response on mobile
-                        startOverlay.addEventListener("touchend", function(e) {
-                            // Prevent default to avoid double-firing if both events happen
-                            e.preventDefault();
-                            initialPlay();
-                        }, { passive: false });
-                        
-                        startOverlay.addEventListener("click", function() {
-                            initialPlay();
-                        });
-                    }
+                    // Listen for both touch and click to ensure we catch the first one
+                    startOverlay.addEventListener("touchend", function(e) {
+                        e.preventDefault(); // Prevent ghost clicks
+                        unlockVideo();
+                    }, { once: true });
+
+                    startOverlay.addEventListener("click", function(e) {
+                        unlockVideo();
+                    }, { once: true });
                 });
             }
 
