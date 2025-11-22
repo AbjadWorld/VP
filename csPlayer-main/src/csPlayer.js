@@ -93,23 +93,62 @@ return new Promise((resolve, reject) => {
      'onReady':()=>{
 if($("#"+videoTag) != null && videoTag){
 
-      // FIX: Wire up the ENTIRE overlay span to force PLAY
-      // This covers the whole screen (icon + background), eliminating dead zones.
+      // DEBUG: On-screen logger
+      function logToScreen(msg) {
+          var debugConsole = document.getElementById("cs-debug-console");
+          if (!debugConsole) {
+              debugConsole = document.createElement("div");
+              debugConsole.id = "cs-debug-console";
+              debugConsole.style.cssText = "position:fixed; top:0; left:0; width:100%; height:200px; overflow:hidden; pointer-events:none; z-index:99999; color:#0f0; text-shadow:1px 1px 1px #000; font-family:monospace; font-size:12px; background:rgba(0,0,0,0.2); padding:5px;";
+              document.body.appendChild(debugConsole);
+          }
+          var line = document.createElement("div");
+          line.innerText = "> " + msg;
+          debugConsole.prepend(line); // Newest on top
+          // Keep only last 10 lines
+          if (debugConsole.children.length > 10) debugConsole.lastChild.remove();
+      }
+
+      // FIX: Wire up the overlay divs AND the icon to force PLAY (not toggle)
+      // Listeners attached IMMEDIATELY to avoid dead clicks during init
       function safePlay(e) {
+          var msg = "SafePlay: " + e.target.tagName + "." + e.target.className;
+          console.log(msg);
+          logToScreen(msg);
+          
           e.stopPropagation(); 
-          // REMOVED e.preventDefault() to ensure browser counts this as a trusted "User Gesture" for playback
+          e.preventDefault();
+          
           if(csPlayer.csPlayers[videoTag]["videoTag"] && typeof csPlayer.csPlayers[videoTag]["videoTag"].playVideo === "function") {
+              logToScreen("Calling playVideo()...");
               csPlayer.csPlayers[videoTag]["videoTag"].unMute();
               csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
+          } else {
+              logToScreen("Error: PlayerObj not ready");
           }
       }
       var parent = document.querySelector("#"+playerTagId).closest(".csPlayer");
-      // Attach to the main span which now has pointer-events: auto
-      var overlaySpan = parent.querySelector(".csPlayer-container span");
-      if (overlaySpan) {
-          overlaySpan.addEventListener("click", safePlay);
-          overlaySpan.addEventListener("touchend", safePlay);
-      }
+      
+      // Debug: Log ALL clicks on the container to see what is being hit
+      parent.addEventListener("click", function(e) {
+          var msg = "Global Click: " + e.target.tagName + "." + e.target.className;
+          console.log(msg);
+          logToScreen(msg);
+      }, true); // Capture phase
+
+      // FIX: Attach safePlay to the MAIN SPAN (which now has pointer-events: auto)
+      // This covers the entire player area, ensuring NO dead zones.
+      var mainOverlay = parent.querySelector(".csPlayer-container span");
+      logToScreen("Attaching to Main Overlay");
+      
+      mainOverlay.addEventListener("click", safePlay);
+      mainOverlay.addEventListener("touchend", safePlay);
+      
+      // Also attach to children just in case, though bubbling should handle it
+      parent.querySelectorAll(".csPlayer-container span *").forEach(el => {
+          el.addEventListener("click", safePlay);
+          el.addEventListener("touchend", safePlay);
+      });
 
 csPlayer.pauseVideoWithPromise(csPlayer.csPlayers[videoTag]["videoTag"]).then(()=>{
        parent.querySelector(".csPlayer-container iframe").addEventListener("load",()=>{ 
