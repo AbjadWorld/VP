@@ -159,10 +159,6 @@ if($("#"+videoTag) != null && videoTag){
       ["click","touchstart","touchend"].forEach(function(type){
       parent.addEventListener(type,logClickZone,true);
       });
-      parent.querySelectorAll(".csPlayer-container span div, .csPlayer-container span i").forEach(el => {
-          el.addEventListener("click", safePlay);
-          el.addEventListener("touchend", safePlay);
-      });
 
 csPlayer.pauseVideoWithPromise(csPlayer.csPlayers[videoTag]["videoTag"]).then(()=>{
        parent.querySelector(".csPlayer-container iframe").addEventListener("load",()=>{ 
