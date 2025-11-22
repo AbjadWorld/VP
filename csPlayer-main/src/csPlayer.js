@@ -93,21 +93,23 @@ return new Promise((resolve, reject) => {
      'onReady':()=>{
 if($("#"+videoTag) != null && videoTag){
 
-      // FIX: Wire up the overlay divs AND the icon to force PLAY (not toggle)
-      // Listeners attached IMMEDIATELY to avoid dead clicks during init
+      // FIX: Wire up the ENTIRE overlay span to force PLAY
+      // This covers the whole screen (icon + background), eliminating dead zones.
       function safePlay(e) {
           e.stopPropagation(); 
-          e.preventDefault();
+          // REMOVED e.preventDefault() to ensure browser counts this as a trusted "User Gesture" for playback
           if(csPlayer.csPlayers[videoTag]["videoTag"] && typeof csPlayer.csPlayers[videoTag]["videoTag"].playVideo === "function") {
               csPlayer.csPlayers[videoTag]["videoTag"].unMute();
               csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
           }
       }
       var parent = document.querySelector("#"+playerTagId).closest(".csPlayer");
-      parent.querySelectorAll(".csPlayer-container span div, .csPlayer-container span i").forEach(el => {
-          el.addEventListener("click", safePlay);
-          el.addEventListener("touchend", safePlay);
-      });
+      // Attach to the main span which now has pointer-events: auto
+      var overlaySpan = parent.querySelector(".csPlayer-container span");
+      if (overlaySpan) {
+          overlaySpan.addEventListener("click", safePlay);
+          overlaySpan.addEventListener("touchend", safePlay);
+      }
 
 csPlayer.pauseVideoWithPromise(csPlayer.csPlayers[videoTag]["videoTag"]).then(()=>{
        parent.querySelector(".csPlayer-container iframe").addEventListener("load",()=>{ 
