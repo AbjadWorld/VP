@@ -150,7 +150,8 @@ z-index: 5;
 display: flex;
 align-items: center;
 justify-content: center;
-pointer-events: none;
+pointer-events: auto;
+cursor: pointer;
 }
 .csPlayer .csPlayer-container span i{
 display: block;
