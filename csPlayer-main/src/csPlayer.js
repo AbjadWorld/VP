@@ -105,9 +105,9 @@ csPlayer.csPlayers[videoTag]["TextTimeInterval"] = setInterval(updateTextTime,10
       document.fullscreenEnabled ? parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").style.display ="block" : parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").style.display ="none";
       parent.querySelector(".csPlayer-controls-box .csPlayer-controls .settingsBtn").addEventListener("click",toggleSettings);
       
-      // FIX: Wire up the overlay divs to toggle play/pause
-      parent.querySelectorAll(".csPlayer-container span div").forEach(div => {
-          div.addEventListener("click", togglePlayPause);
+      // FIX: Wire up the overlay divs AND the icon to toggle play/pause
+      parent.querySelectorAll(".csPlayer-container span div, .csPlayer-container span i").forEach(el => {
+          el.addEventListener("click", togglePlayPause);
       });
 
       });//iframe onload
