@@ -89,9 +89,26 @@ return new Promise((resolve, reject) => {
      showinfo: 0,
      iv_load_policy: 3,     
     },
-    events:{
-     'onReady':()=>{
+     events:{
+     'onReady':()=>{
 if($("#"+videoTag) != null && videoTag){
+
+      // FIX: Wire up the overlay divs AND the icon to force PLAY (not toggle)
+      // Listeners attached IMMEDIATELY to avoid dead clicks during init
+      function safePlay(e) {
+          e.stopPropagation(); 
+          e.preventDefault();
+          if(csPlayer.csPlayers[videoTag]["videoTag"] && typeof csPlayer.csPlayers[videoTag]["videoTag"].playVideo === "function") {
+              csPlayer.csPlayers[videoTag]["videoTag"].unMute();
+              csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
+          }
+      }
+      var parent = document.querySelector("#"+playerTagId).closest(".csPlayer");
+      parent.querySelectorAll(".csPlayer-container span div, .csPlayer-container span i").forEach(el => {
+          el.addEventListener("click", safePlay);
+          el.addEventListener("touchend", safePlay);
+      });
+
 csPlayer.pauseVideoWithPromise(csPlayer.csPlayers[videoTag]["videoTag"]).then(()=>{
        parent.querySelector(".csPlayer-container iframe").addEventListener("load",()=>{ 
       parent.querySelector(".csPlayer-container span i").classList.remove("csPlayer-loading");
@@ -105,22 +122,6 @@ csPlayer.csPlayers[videoTag]["TextTimeInterval"] = setInterval(updateTextTime,10
       document.fullscreenEnabled ? parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").style.display ="block" : parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").style.display ="none";
       parent.querySelector(".csPlayer-controls-box .csPlayer-controls .settingsBtn").addEventListener("click",toggleSettings);
       
-      // FIX: Wire up the overlay divs AND the icon to force PLAY (not toggle)
-      // This prevents accidental pausing if events fire twice or state is mismatched
-      function safePlay(e) {
-          e.stopPropagation(); // Prevent bubbling
-          e.preventDefault();  // Prevent default behavior
-          if(csPlayer.csPlayers[videoTag]["videoTag"] && typeof csPlayer.csPlayers[videoTag]["videoTag"].playVideo === "function") {
-              csPlayer.csPlayers[videoTag]["videoTag"].unMute(); // Ensure unmuted
-              csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
-          }
-      }
-
-      parent.querySelectorAll(".csPlayer-container span div, .csPlayer-container span i").forEach(el => {
-          el.addEventListener("click", safePlay);
-          el.addEventListener("touchend", safePlay); // Handle touch explicitly to be responsive
-      });
-
       });//iframe onload
       });
       }}, //onReady
