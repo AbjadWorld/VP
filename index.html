@@ -128,14 +128,53 @@
         #video .csPlayer .csPlayer-controls-box .csPlayer-controls .fsBtn {
             display: none !important;
         }
+
+        /* Debug panel for Unity WebView */
+        #debugPanel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 2147483647;
+            border: 2px solid #0f0;
+            border-radius: 5px;
+        }
+        #debugPanel div {
+            margin: 2px 0;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body>
     <div id="video"></div>
+    <div id="debugPanel"></div>
 
     <script src="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.js"></script>
     <script>
         (function () {
+            // Visual debug function for Unity WebView
+            var debugLog = function(msg) {
+                console.log(msg);
+                var panel = document.getElementById('debugPanel');
+                if (panel) {
+                    var entry = document.createElement('div');
+                    entry.textContent = new Date().toLocaleTimeString() + ': ' + msg;
+                    panel.appendChild(entry);
+                    panel.scrollTop = panel.scrollHeight;
+                    // Keep only last 10 messages
+                    while (panel.children.length > 10) {
+                        panel.removeChild(panel.firstChild);
+                    }
+                }
+            };
+
             function getVideoIdFromUrl() {
                 var params = new URLSearchParams(window.location.search);
                 var id = params.get("v") || params.get("id");
@@ -147,6 +186,7 @@
 
             function initCsPlayer() {
                 var videoId = getVideoIdFromUrl();
+                debugLog("Initializing player with ID: " + videoId);
 
                 csPlayer.init("video", {
                     defaultId: videoId,
@@ -163,9 +203,10 @@
                             var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
                             if (playerObj && typeof playerObj.pauseVideo === "function") {
                                 playerObj.pauseVideo();
+                                debugLog("Video paused on init");
                             }
                         } catch (e) {
-                            console.log("Pause on init:", e);
+                            debugLog("Pause on init error: " + e.message);
                         }
                     }, 500);
 
@@ -177,14 +218,25 @@
                             return;
                         }
 
+                        debugLog("Video area tapped");
                         try {
                             var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
                             if (playerObj && typeof playerObj.playVideo === "function") {
-                                // Force play without state checks for WebView compatibility
+                                debugLog("Attempting to play from tap...");
+                                // Try unmuting first for Unity WebView
+                                if (typeof playerObj.unMute === "function") {
+                                    playerObj.unMute();
+                                }
                                 playerObj.playVideo();
+                                
+                                // Verify it worked
+                                setTimeout(function() {
+                                    var state = playerObj.getPlayerState ? playerObj.getPlayerState() : -1;
+                                    debugLog("State after tap play: " + state);
+                                }, 200);
                             }
                         } catch (err) {
-                            console.error("Play error:", err);
+                            debugLog("Play error: " + err.message);
                         }
                     };
 
@@ -196,25 +248,54 @@
                         container.addEventListener("click", handleTap);
                     }
 
-                    // Extra fix for Unity WebView: directly wire the play/pause button
+                    // Extra fix for Unity WebView: directly wire the play/pause button with multiple attempts
                     setTimeout(function() {
                         var playBtn = document.querySelector("#video .csPlayer-controls-box main .csPlayer-play-pause-btn");
+                        debugLog("Play button found: " + !!playBtn);
+                        
                         if (playBtn) {
-                            playBtn.addEventListener("click", function() {
+                            var forcePlay = function(evt) {
+                                debugLog("Play button clicked!");
+                                evt.stopPropagation();
+                                evt.preventDefault();
+                                
                                 try {
                                     var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                                    debugLog("Player object: " + !!playerObj);
+                                    
                                     if (playerObj) {
                                         var state = playerObj.getPlayerState ? playerObj.getPlayerState() : -1;
+                                        debugLog("Player state: " + state);
+                                        
                                         if (state === 1) {
+                                            debugLog("Pausing video...");
                                             playerObj.pauseVideo();
                                         } else {
+                                            debugLog("Playing video...");
+                                            // Try unmuting first for Unity WebView
+                                            if (typeof playerObj.unMute === "function") {
+                                                playerObj.unMute();
+                                            }
                                             playerObj.playVideo();
+                                            
+                                            // Double-check after a moment
+                                            setTimeout(function() {
+                                                var newState = playerObj.getPlayerState ? playerObj.getPlayerState() : -1;
+                                                debugLog("State after play: " + newState);
+                                                if (newState !== 1) {
+                                                    debugLog("Retrying play...");
+                                                    playerObj.playVideo();
+                                                }
+                                            }, 200);
                                         }
                                     }
                                 } catch (err) {
-                                    console.error("Play button error:", err);
+                                    debugLog("Play btn error: " + err.message);
                                 }
-                            }, true); // Use capture phase
+                            };
+                            
+                            playBtn.addEventListener("click", forcePlay, true);
+                            playBtn.addEventListener("touchend", forcePlay, true);
                         }
                     }, 1000);
                 });
