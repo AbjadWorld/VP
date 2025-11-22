@@ -145,7 +145,7 @@
 
                     // Listen for both touch and click to ensure we catch the first one
                     startOverlay.addEventListener("touchend", function(e) {
-                        e.preventDefault(); // Prevent ghost clicks
+                        // e.preventDefault(); // REMOVED: This kills the user gesture on some devices!
                         unlockVideo();
                     });
 
