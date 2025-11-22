@@ -95,70 +95,7 @@ if($("#"+videoTag) != null && videoTag){
 
       // FIX: Wire up the overlay divs AND the icon to force PLAY (not toggle)
       // Listeners attached IMMEDIATELY to avoid dead clicks during init
-      function safePlay(e) {
-          e.stopPropagation(); 
-          e.preventDefault();
-          console.log("[csPlayer] safePlay triggered",{
-          eventType:e.type,
-          targetTag:e.target.tagName,
-          targetClass:e.target.className
-          });
-          if(csPlayer.csPlayers[videoTag]["videoTag"] && typeof csPlayer.csPlayers[videoTag]["videoTag"].playVideo === "function") {
-              csPlayer.csPlayers[videoTag]["videoTag"].unMute();
-              csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
-          }
-      }
       var parent = document.querySelector("#"+playerTagId).closest(".csPlayer");
-      var debugOverlay = parent.querySelector(".csPlayer-debug-overlay");
-      if(!debugOverlay){
-      debugOverlay = document.createElement("div");
-      debugOverlay.className = "csPlayer-debug-overlay";
-      parent.appendChild(debugOverlay);
-      }
-      function logClickZone(e){
-      try{
-      var container = parent.querySelector(".csPlayer-container");
-      if(!container){return;}
-      var rect = container.getBoundingClientRect();
-      var clientX = e.clientX;
-      var clientY = e.clientY;
-      if(e.touches && e.touches[0]){
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-      }else if(e.changedTouches && e.changedTouches[0]){
-      clientX = e.changedTouches[0].clientX;
-      clientY = e.changedTouches[0].clientY;
-      }
-      if(!(rect.width && rect.height)){return;}
-      var relX = (clientX - rect.left)/rect.width;
-      var relY = (clientY - rect.top)/rect.height;
-      if(relX < 0 || relX > 1 || relY < 0 || relY > 1){return;}
-      var horiz = relX < 0.33 ? "left" : (relX > 0.66 ? "right" : "center");
-      var vert = relY < 0.5 ? "top" : "bottom";
-      console.log("[csPlayer] zone click",{
-      eventType:e.type,
-      zone:horiz+"-"+vert,
-      relX:relX,
-      relY:relY,
-      clientX:clientX,
-      clientY:clientY,
-      targetTag:e.target.tagName,
-      targetClass:e.target.className
-      });
-      if(debugOverlay){
-      var safeRelX = isFinite(relX) ? relX.toFixed(2) : relX;
-      var safeRelY = isFinite(relY) ? relY.toFixed(2) : relY;
-      debugOverlay.innerText =
-      "event: " + e.type + " | zone: " + horiz+"-"+vert +
-      "\nrelX: " + safeRelX + " relY: " + safeRelY +
-      "\n" + e.target.tagName + " ." + e.target.className;
-      }
-      }catch(err){
-      console.error("[csPlayer] zone log error",err);
-      }}
-      ["click","touchstart","touchend"].forEach(function(type){
-      parent.addEventListener(type,logClickZone,true);
-      });
 
 csPlayer.pauseVideoWithPromise(csPlayer.csPlayers[videoTag]["videoTag"]).then(()=>{
        parent.querySelector(".csPlayer-container iframe").addEventListener("load",()=>{ 
@@ -182,7 +119,6 @@ csPlayer.csPlayers[videoTag]["TextTimeInterval"] = setInterval(updateTextTime,10
 }); //promise
 //backward 
 function backward(){
-console.log("[csPlayer] backward()");
 updateTextTime()
 updateTimeSlider()
 var currentTime = csPlayer.csPlayers[videoTag]["videoTag"].getCurrentTime();
@@ -192,7 +128,6 @@ controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box")
 }
 //forward
 function forward(){
-console.log("[csPlayer] forward()");
 updateTextTime()
 updateTimeSlider()
 var currentTime = csPlayer.csPlayers[videoTag]["videoTag"].getCurrentTime();
@@ -202,7 +137,6 @@ controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box")
 }
 //togglePlayPause
 function togglePlayPause(){
-console.log("[csPlayer] togglePlayPause()",csPlayer.csPlayers[videoTag]["isPlaying"]);
 if(csPlayer.csPlayers[videoTag]["isPlaying"]){
 csPlayer.csPlayers[videoTag]["videoTag"].pauseVideo();
 clearTimeout(controlsTimeout);
@@ -242,7 +176,6 @@ slider.style.background =`linear-gradient(to right, var(--sliderSeekTrackColor) 
 parent.querySelector(".csPlayer-controls-box .csPlayer-controls div span").style.width = loaded+"%";
 }
 function updateSlider(){
-console.log("[csPlayer] updateSlider()");
 clearTimeout(controlsTimeout);
 var slider = parent.querySelector(".csPlayer-controls-box .csPlayer-controls div input");
 var duration = csPlayer.csPlayers[videoTag]["videoTag"].getDuration();
@@ -254,7 +187,6 @@ controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box")
 }
 //fullscreen
 function toggleFullscreen(){
-console.log("[csPlayer] toggleFullscreen()");
 const videoContainer = parent;  
 if(!document.fullscreenElement && document.fullscreenEnabled){
  if(videoContainer.requestFullscreen){
@@ -286,7 +218,6 @@ pin.nextElementSibling.style.maxHeight ="0px";
 });
 }
 function toggleSettings(){
-console.log("[csPlayer] toggleSettings()");
 const targetElement = parent.querySelector(".csPlayer-controls-box");
 var settings = parent.querySelector(".csPlayer-controls-box .csPlayer-settings-box");
 var qualities = csPlayer.csPlayers[videoTag]["videoTag"].getAvailableQualityLevels();
@@ -351,7 +282,6 @@ settings.querySelector("p:nth-of-type(2) b").innerText = value;
 
 
 function onPlayerStateChange(event){
-console.log("[csPlayer] onPlayerStateChange",event.data);
 if(event.data == YT.PlayerState.PLAYING){
 csPlayer.csPlayers[videoTag]["isPlaying"] = true;
 csPlayer.csPlayers[videoTag]["playerState"] ="playing";
