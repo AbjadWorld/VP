@@ -239,7 +239,6 @@
                     }, 500);
 
                     var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-                    var hasPlayedOnce = false;
 
                     var handleTap = function (e) {
                         // Only block bottom controls, allow center play button
@@ -258,19 +257,14 @@
                                 csPlayer.pause("video");
                                 debugLog("Video paused");
                             } else {
-                                // For first play, use direct YouTube API to satisfy autoplay policy
-                                if (!hasPlayedOnce) {
-                                    debugLog("First play - using direct API");
-                                    var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                                    if (playerObj && typeof playerObj.playVideo === "function") {
-                                        playerObj.playVideo();
-                                        hasPlayedOnce = true;
-                                        debugLog("Video playing (direct API)");
-                                    }
+                                // Always use direct YouTube API for play (bypasses csPlayer restriction)
+                                debugLog("Using direct API for play");
+                                var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                                if (playerObj && typeof playerObj.playVideo === "function") {
+                                    playerObj.playVideo();
+                                    debugLog("Video playing (direct API)");
                                 } else {
-                                    // After first play, use csPlayer API
-                                    csPlayer.play("video");
-                                    debugLog("Video playing (csPlayer API)");
+                                    debugLog("Player object not found");
                                 }
                                 
                                 // Verify it worked
@@ -313,30 +307,25 @@
                                         debugLog("Pausing video...");
                                         csPlayer.pause("video");
                                     } else {
-                                        // For first play, use direct YouTube API
-                                        if (!hasPlayedOnce) {
-                                            debugLog("First play - using direct API");
-                                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                                            if (playerObj && typeof playerObj.playVideo === "function") {
-                                                playerObj.playVideo();
-                                                hasPlayedOnce = true;
-                                                debugLog("Playing video (direct API)");
-                                            }
+                                        // Always use direct YouTube API for play
+                                        debugLog("Using direct API for play");
+                                        var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                                        if (playerObj && typeof playerObj.playVideo === "function") {
+                                            playerObj.playVideo();
+                                            debugLog("Playing video (direct API)");
                                         } else {
-                                            debugLog("Playing video (csPlayer API)");
-                                            csPlayer.play("video");
+                                            debugLog("Player object not found");
                                         }
                                         
                                         // Double-check after a moment
                                         setTimeout(function() {
                                             var newState = csPlayer.getPlayerState("video");
                                             debugLog("State after play: " + newState);
-                                            if (newState !== "playing" && !hasPlayedOnce) {
-                                                debugLog("Retrying play with direct API...");
+                                            if (newState !== "playing") {
+                                                debugLog("Retrying play...");
                                                 var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                                                if (playerObj) {
+                                                if (playerObj && typeof playerObj.playVideo === "function") {
                                                     playerObj.playVideo();
-                                                    hasPlayedOnce = true;
                                                 }
                                             }
                                         }, 200);
