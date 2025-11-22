@@ -59,92 +59,86 @@
                     theme: "default",
                     loop: false
                 }).then(function () {
+                    // Fix csPlayer's bug: wire up the overlay divs that have pointer-events but no handlers
                     var container = document.querySelector("#video .csPlayer");
                     if (!container) return;
                     
-                    // Hide csPlayer's default play button on mobile
-                    var playOverlay = container.querySelector(".csPlayer-container span");
-                    if (playOverlay) {
-                        playOverlay.style.display = "none";
-                    }
-                    
-                    // Create Arabic double-tap overlay
-                    var tapOverlay = document.createElement("div");
-                    tapOverlay.innerHTML = `
-                        <div style="text-align:center;">
-                            <div class="tap-icon" style="font-size:80px;margin-bottom:20px;">👆👆</div>
-                            <div style="font-size:28px;font-weight:bold;color:white;font-family:Arial,sans-serif;">انقر مرتين</div>
-                            <div style="font-size:18px;color:#ccc;margin-top:10px;font-family:Arial,sans-serif;">Tap 2 times</div>
-                        </div>
-                    `;
-                    
-                    Object.assign(tapOverlay.style, {
-                        position: "fixed",
-                        top: "0",
-                        left: "0",
-                        width: "100%",
-                        height: "100%",
-                        background: "rgba(0,0,0,0.85)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: "99999",
-                        cursor: "pointer"
-                    });
-                    
-                    // Add pulse animation to tap icon
-                    var style = document.createElement("style");
-                    style.textContent = `
-                        @keyframes tapPulse {
-                            0%, 100% { transform: scale(1); opacity: 1; }
-                            50% { transform: scale(1.2); opacity: 0.7; }
-                        }
-                        .tap-icon { animation: tapPulse 1.5s infinite; }
-                    `;
-                    document.head.appendChild(style);
-                    
-                    document.body.appendChild(tapOverlay);
-                    
-                    var tapCount = 0;
-                    var tapTimeout;
-                    
-                    function handleTap(e) {
-                        tapCount++;
-                        clearTimeout(tapTimeout);
+                    // Wait a bit for the iframe to load, then attach handlers to the overlay divs
+                    setTimeout(function() {
+                        var overlayDivs = container.querySelectorAll(".csPlayer-container span div");
                         
-                        var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                        
-                        if (tapCount >= 2 && playerObj && typeof playerObj.playVideo === "function") {
-                            try {
+                        function startVideo(e) {
+                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                            if (playerObj && typeof playerObj.playVideo === "function") {
                                 playerObj.unMute();
                                 playerObj.playVideo();
-                                
-                                // Check if it started playing
-                                setTimeout(function() {
-                                    var state = -1;
-                                    try { state = playerObj.getPlayerState(); } catch(e) {}
-                                    
-                                    if (state === 1 || state === 3) {
-                                        tapOverlay.remove();
-                                        if (playOverlay) playOverlay.style.display = "";
-                                    } else {
-                                        tapCount = 0; // Reset for retry
-                                    }
-                                }, 400);
-                            } catch(err) {
-                                console.error("Play error:", err);
-                                tapCount = 0;
                             }
-                        } else {
-                            // Reset tap count after 1 second if no second tap
-                            tapTimeout = setTimeout(function() {
-                                tapCount = 0;
-                            }, 1000);
                         }
-                    }
+                        
+                        overlayDivs.forEach(function(div) {
+                            div.addEventListener("click", startVideo);
+                            div.addEventListener("touchend", startVideo);
+                        });
+                    }, 500);
+
+                    // Custom "Double Tap" Overlay
+                    var overlay = document.createElement("div");
+                    overlay.className = "double-tap-overlay";
+                    overlay.innerHTML = `
+                        <div class="tap-icon">👆👆</div>
+                        <div class="tap-text">Double Tap to Play</div>
+                    `;
                     
-                    tapOverlay.addEventListener("click", handleTap);
-                    tapOverlay.addEventListener("touchend", handleTap);
+                    // Add styles for the overlay and animation
+                    var style = document.createElement("style");
+                    style.innerHTML = `
+                        .csPlayer .csPlayer-container span i { display: none !important; } /* Hide default play button */
+                        
+                        .double-tap-overlay {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: rgba(0,0,0,0.4);
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            z-index: 10;
+                            pointer-events: none; /* Let clicks pass through to the container */
+                        }
+                        .tap-icon {
+                            font-size: 50px;
+                            animation: tap-anim 1.5s infinite;
+                        }
+                        .tap-text {
+                            color: white;
+                            font-family: sans-serif;
+                            font-weight: bold;
+                            margin-top: 10px;
+                            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+                        }
+                        @keyframes tap-anim {
+                            0% { transform: scale(1); opacity: 0.8; }
+                            50% { transform: scale(0.8); opacity: 1; }
+                            100% { transform: scale(1); opacity: 0.8; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                    container.appendChild(overlay);
+                    
+                    // Remove overlay when video starts
+                    var checkStart = setInterval(function() {
+                        var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                        if (playerObj && typeof playerObj.getPlayerState === "function") {
+                            var state = playerObj.getPlayerState();
+                            if (state === 1 || state === 3) { // Playing or Buffering
+                                overlay.style.display = "none";
+                                clearInterval(checkStart);
+                            }
+                        }
+                    }, 500);
                 });
             }
 
