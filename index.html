@@ -106,14 +106,38 @@
                         var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
                         
                         if (!playerObj || typeof playerObj.playVideo !== "function") {
-                            // console.log("Player not ready yet");
                             return; 
                         }
 
                         try {
+                            // Update UI to show we are trying
+                            var text = startOverlay.querySelector("div:nth-child(2)");
+                            if (text) text.innerText = "Starting...";
+                            
                             playerObj.unMute();
                             playerObj.playVideo();
-                            startOverlay.remove();
+                            
+                            // Don't remove immediately! Wait for state change.
+                            // We'll poll for success for a short time
+                            var checkInterval = setInterval(function() {
+                                var state = -1;
+                                try { state = playerObj.getPlayerState(); } catch(e){}
+                                
+                                // 1 = Playing, 3 = Buffering
+                                if (state === 1 || state === 3) {
+                                    startOverlay.remove();
+                                    clearInterval(checkInterval);
+                                }
+                            }, 200);
+                            
+                            // Fallback: if it doesn't start in 3s, reset text so user can tap again
+                            setTimeout(function() {
+                                if (startOverlay.parentElement) { // still in DOM
+                                    if (text) text.innerText = "Tap again";
+                                    clearInterval(checkInterval);
+                                }
+                            }, 3000);
+
                         } catch (e) {
                             console.error("Unlock error:", e);
                         }
