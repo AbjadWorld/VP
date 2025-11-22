@@ -1,42 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Player</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Abjad Player</title>
+
     <script src="https://www.youtube.com/iframe_api"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.css" />
+
     <style>
-        /* Reset and Fullscreen */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
-        
-        #video {
+        html, body {
+            margin: 0;
+            padding: 0;
             width: 100%;
             height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #000;
         }
-        
+
+        body {
+            overflow: hidden;
+        }
+
+        #video {
+            width: 100vw;
+            height: 100vh;
+        }
+
         #video .csPlayer {
             width: 100%;
             height: 100%;
             --playerBg: #000;
-        }
-
-        /* Ensure iframe fills container */
-        #video .csPlayer .csPlayer-container iframe {
-            width: 100% !important;
-            height: 100% !important;
-            position: absolute;
-            top: 0; left: 0;
-        }
-        
-        /* Force Controls visibility on Mobile */
-        #video .csPlayer .csPlayer-controls-box {
-            display: flex !important;
-            z-index: 9999;
+            --playerColor: #fff;
+            --settingsBg: #181818;
         }
     </style>
 </head>
@@ -45,73 +40,53 @@
 
     <script src="https://cdn.jsdelivr.net/gh/abtp2/csPlayer/src/csPlayer.js"></script>
     <script>
-        function getVideoId() {
-            const params = new URLSearchParams(window.location.search);
-            return params.get("v") || params.get("id") || "oZQWf8TJooI";
-        }
+        (function () {
+            function getVideoIdFromUrl() {
+                var params = new URLSearchParams(window.location.search);
+                var id = params.get("v") || params.get("id");
+                if (!id || !id.trim()) {
+                    return "oZQWf8TJooI";
+                }
+                return id.trim();
+            }
 
-        function initPlayer() {
-            // Unity WebView Fix: Add permissions to iframe
-            new MutationObserver((mutations) => {
-                mutations.forEach((m) => {
-                    m.addedNodes.forEach((n) => {
-                        if (n.tagName === 'IFRAME' && n.src.includes('youtube')) {
-                            n.setAttribute('allow', 'autoplay; encrypted-media; fullscreen; picture-in-picture');
-                        }
-                    });
-                });
-            }).observe(document.body, { childList: true, subtree: true });
+            function initCsPlayer() {
+                var videoId = getVideoIdFromUrl();
 
-            csPlayer.init("video", {
-                defaultId: getVideoId(),
-                thumbnail: true,
-                theme: "default",
-                loop: false
-            }).then(() => {
-                // Add robust click handler for the play button
-                setupPlayButton();
-            });
-        }
+                csPlayer.init("video", {
+                    defaultId: videoId,
+                    thumbnail: true,
+                    theme: "default",
+                    loop: false
+                }).then(function () {
+                    var container = document.querySelector("#video .csPlayer-container");
+                    if (!container) return;
 
-        function setupPlayButton() {
-            // We need to attach to the center play button specifically
-            // In csPlayer structure, it's usually inside .csPlayer-controls-box main
-            const checkForButton = setInterval(() => {
-                const mainBtn = document.querySelector("#video .csPlayer-controls-box main");
-                if (mainBtn) {
-                    clearInterval(checkForButton);
-                    
-                    // The Magic Fix for Unity WebView:
-                    // Intercept the click, Mute -> Play -> Unmute
-                    const forcePlay = (e) => {
-                        // If already playing, let csPlayer handle pause normally
-                        if (csPlayer.getPlayerState("video") === 'playing') return;
-
-                        e.stopPropagation(); // Stop csPlayer's default handling
-                        e.preventDefault();
-
-                        const player = csPlayer.csPlayers["video"].videoTag;
-                        if (player && typeof player.playVideo === 'function') {
-                            if (typeof player.mute === 'function') player.mute();
-                            player.playVideo();
-                            setTimeout(() => {
-                                if (typeof player.unMute === 'function') player.unMute();
-                            }, 1000);
+                    var started = false;
+                    var startOnTap = function () {
+                        if (started) return;
+                        started = true;
+                        try {
+                            var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
+                            if (playerObj && typeof playerObj.playVideo === "function") {
+                                playerObj.playVideo();
+                            }
+                        } catch (e) {
+                            console.error(e);
                         }
                     };
-                    
-                    // Use capture phase to ensure we get the event before csPlayer
-                    mainBtn.addEventListener('click', forcePlay, true);
-                    mainBtn.addEventListener('touchend', forcePlay, true);
-                }
-            }, 500);
-        }
 
-        if (window.YT && YT.Player) {
-            initPlayer();
-        } else {
-            window.onYouTubeIframeAPIReady = initPlayer;
-        }
+                    container.addEventListener("click", startOnTap, { once: true });
+                    container.addEventListener("touchstart", startOnTap, { once: true });
+                });
+            }
+
+            if (window.YT && typeof YT.Player === "function") {
+                initCsPlayer();
+            } else {
+                window.onYouTubeIframeAPIReady = initCsPlayer;
+            }
+        })();
     </script>
 </body>
 </html>
