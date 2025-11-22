@@ -74,11 +74,11 @@ var parent = document.querySelector("#"+playerTagId).closest(".csPlayer");
 var controlsTimeout = null;
 return new Promise((resolve, reject) => {
   csPlayer.csPlayers[videoTag]["videoTag"] = new YT.Player(playerTagId,{
-    videoId: csPlayer.csPlayers[videoTag]["params"]["defaultId"],
-    playerVars:{
+     videoId: csPlayer.csPlayers[videoTag]["params"]["defaultId"],
+    playerVars:{
      controls: 0,
      mute: 1,
-     autoplay: 1,
+     autoplay: 0,
      disablekb: 1,
      color: "white",
      fs: 0,   
@@ -105,9 +105,20 @@ csPlayer.csPlayers[videoTag]["TextTimeInterval"] = setInterval(updateTextTime,10
       document.fullscreenEnabled ? parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").style.display ="block" : parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").style.display ="none";
       parent.querySelector(".csPlayer-controls-box .csPlayer-controls .settingsBtn").addEventListener("click",toggleSettings);
       
-      // FIX: Wire up the overlay divs AND the icon to toggle play/pause
+      // FIX: Wire up the overlay divs AND the icon to force PLAY (not toggle)
+      // This prevents accidental pausing if events fire twice or state is mismatched
+      function safePlay(e) {
+          e.stopPropagation(); // Prevent bubbling
+          e.preventDefault();  // Prevent default behavior
+          if(csPlayer.csPlayers[videoTag]["videoTag"] && typeof csPlayer.csPlayers[videoTag]["videoTag"].playVideo === "function") {
+              csPlayer.csPlayers[videoTag]["videoTag"].unMute(); // Ensure unmuted
+              csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
+          }
+      }
+
       parent.querySelectorAll(".csPlayer-container span div, .csPlayer-container span i").forEach(el => {
-          el.addEventListener("click", togglePlayPause);
+          el.addEventListener("click", safePlay);
+          el.addEventListener("touchend", safePlay); // Handle touch explicitly to be responsive
       });
 
       });//iframe onload
