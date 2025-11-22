@@ -59,51 +59,92 @@
                     theme: "default",
                     loop: false
                 }).then(function () {
-                    // One-time click handler to ensure first tap works on mobile
                     var container = document.querySelector("#video .csPlayer");
                     if (!container) return;
                     
-                    var firstPlayTriggered = false;
+                    // Hide csPlayer's default play button on mobile
+                    var playOverlay = container.querySelector(".csPlayer-container span");
+                    if (playOverlay) {
+                        playOverlay.style.display = "none";
+                    }
                     
-                    function handleFirstPlay(e) {
-                        if (firstPlayTriggered) return;
+                    // Create Arabic double-tap overlay
+                    var tapOverlay = document.createElement("div");
+                    tapOverlay.innerHTML = `
+                        <div style="text-align:center;">
+                            <div class="tap-icon" style="font-size:80px;margin-bottom:20px;">👆👆</div>
+                            <div style="font-size:28px;font-weight:bold;color:white;font-family:Arial,sans-serif;">انقر مرتين</div>
+                            <div style="font-size:18px;color:#ccc;margin-top:10px;font-family:Arial,sans-serif;">Tap 2 times</div>
+                        </div>
+                    `;
+                    
+                    Object.assign(tapOverlay.style, {
+                        position: "fixed",
+                        top: "0",
+                        left: "0",
+                        width: "100%",
+                        height: "100%",
+                        background: "rgba(0,0,0,0.85)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: "99999",
+                        cursor: "pointer"
+                    });
+                    
+                    // Add pulse animation to tap icon
+                    var style = document.createElement("style");
+                    style.textContent = `
+                        @keyframes tapPulse {
+                            0%, 100% { transform: scale(1); opacity: 1; }
+                            50% { transform: scale(1.2); opacity: 0.7; }
+                        }
+                        .tap-icon { animation: tapPulse 1.5s infinite; }
+                    `;
+                    document.head.appendChild(style);
+                    
+                    document.body.appendChild(tapOverlay);
+                    
+                    var tapCount = 0;
+                    var tapTimeout;
+                    
+                    function handleTap(e) {
+                        tapCount++;
+                        clearTimeout(tapTimeout);
                         
                         var playerObj = csPlayer.csPlayers["video"] && csPlayer.csPlayers["video"]["videoTag"];
-                        if (!playerObj || typeof playerObj.playVideo !== "function") return;
                         
-                        try {
-                            playerObj.unMute();
-                            playerObj.playVideo();
-                            
-                            // Check if play actually worked after a brief delay
-                            setTimeout(function() {
-                                var state = -1;
-                                try { state = playerObj.getPlayerState(); } catch(e) {}
+                        if (tapCount >= 2 && playerObj && typeof playerObj.playVideo === "function") {
+                            try {
+                                playerObj.unMute();
+                                playerObj.playVideo();
                                 
-                                // If playing (1) or buffering (3), consider it successful
-                                if (state === 1 || state === 3) {
-                                    firstPlayTriggered = true;
-                                    container.removeEventListener("click", handleFirstPlay, true);
-                                    container.removeEventListener("touchend", handleFirstPlay, true);
-                                }
-                                // If not playing, leave handler active for retry
-                            }, 300);
-                        } catch(err) {
-                            console.error("First play error:", err);
+                                // Check if it started playing
+                                setTimeout(function() {
+                                    var state = -1;
+                                    try { state = playerObj.getPlayerState(); } catch(e) {}
+                                    
+                                    if (state === 1 || state === 3) {
+                                        tapOverlay.remove();
+                                        if (playOverlay) playOverlay.style.display = "";
+                                    } else {
+                                        tapCount = 0; // Reset for retry
+                                    }
+                                }, 400);
+                            } catch(err) {
+                                console.error("Play error:", err);
+                                tapCount = 0;
+                            }
+                        } else {
+                            // Reset tap count after 1 second if no second tap
+                            tapTimeout = setTimeout(function() {
+                                tapCount = 0;
+                            }, 1000);
                         }
                     }
                     
-                    // Use capture phase to ensure we get the event first
-                    container.addEventListener("click", handleFirstPlay, true);
-                    container.addEventListener("touchend", handleFirstPlay, true);
-                    
-                    // Also attach directly to the play icon since it blocks event bubbling
-                    var playIcon = container.querySelector(".csPlayer-container span i");
-                    if (playIcon) {
-                        playIcon.addEventListener("click", handleFirstPlay);
-                        playIcon.addEventListener("touchend", handleFirstPlay);
-                        playIcon.style.cursor = "pointer";
-                    }
+                    tapOverlay.addEventListener("click", handleTap);
+                    tapOverlay.addEventListener("touchend", handleTap);
                 });
             }
 
