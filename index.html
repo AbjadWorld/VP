@@ -74,13 +74,20 @@
                         try {
                             playerObj.unMute();
                             playerObj.playVideo();
-                            firstPlayTriggered = true;
                             
-                            // Remove this handler after first successful play
+                            // Check if play actually worked after a brief delay
                             setTimeout(function() {
-                                container.removeEventListener("click", handleFirstPlay, true);
-                                container.removeEventListener("touchend", handleFirstPlay, true);
-                            }, 100);
+                                var state = -1;
+                                try { state = playerObj.getPlayerState(); } catch(e) {}
+                                
+                                // If playing (1) or buffering (3), consider it successful
+                                if (state === 1 || state === 3) {
+                                    firstPlayTriggered = true;
+                                    container.removeEventListener("click", handleFirstPlay, true);
+                                    container.removeEventListener("touchend", handleFirstPlay, true);
+                                }
+                                // If not playing, leave handler active for retry
+                            }, 300);
                         } catch(err) {
                             console.error("First play error:", err);
                         }
@@ -89,6 +96,14 @@
                     // Use capture phase to ensure we get the event first
                     container.addEventListener("click", handleFirstPlay, true);
                     container.addEventListener("touchend", handleFirstPlay, true);
+                    
+                    // Also attach directly to the play icon since it blocks event bubbling
+                    var playIcon = container.querySelector(".csPlayer-container span i");
+                    if (playIcon) {
+                        playIcon.addEventListener("click", handleFirstPlay);
+                        playIcon.addEventListener("touchend", handleFirstPlay);
+                        playIcon.style.cursor = "pointer";
+                    }
                 });
             }
 
