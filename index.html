@@ -85,8 +85,8 @@
                     var overlay = document.createElement("div");
                     overlay.className = "double-tap-overlay";
                     overlay.innerHTML = `
-                        <div class="tap-icon">👆👆</div>
-                        <div class="tap-text">Double Tap to Play</div>
+                        <div class="tap-icon">👆</div>
+                        <div class="tap-text"> اضغط مرتين </div>
                     `;
                     
                     // Add styles for the overlay and animation
@@ -109,20 +109,25 @@
                             pointer-events: none; /* Let clicks pass through to the container */
                         }
                         .tap-icon {
-                            font-size: 50px;
-                            animation: tap-anim 1.5s infinite;
+                            font-size: 60px;
+                            animation: double-tap-anim 2s infinite;
                         }
                         .tap-text {
                             color: white;
                             font-family: sans-serif;
                             font-weight: bold;
                             margin-top: 10px;
+                            font-size: 1.2rem;
                             text-shadow: 0 2px 4px rgba(0,0,0,0.8);
                         }
-                        @keyframes tap-anim {
-                            0% { transform: scale(1); opacity: 0.8; }
-                            50% { transform: scale(0.8); opacity: 1; }
-                            100% { transform: scale(1); opacity: 0.8; }
+                        /* Tic Tic ------ Tic Tic */
+                        @keyframes double-tap-anim {
+                            0%   { transform: scale(1); opacity: 0.7; }
+                            10%  { transform: scale(0.8); opacity: 1; } /* Tic */
+                            20%  { transform: scale(1); opacity: 0.7; }
+                            30%  { transform: scale(0.8); opacity: 1; } /* Tic */
+                            40%  { transform: scale(1); opacity: 0.7; }
+                            100% { transform: scale(1); opacity: 0.7; } /* ------ */
                         }
                     `;
                     document.head.appendChild(style);
