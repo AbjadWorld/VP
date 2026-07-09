@@ -94,51 +94,24 @@ return new Promise((resolve, reject) => {
 if($("#"+videoTag) != null && videoTag){
 
       // FIX: Wire up the overlay divs AND the icon to force PLAY (not toggle)
-      // Listeners attached IMMEDIATELY to avoid dead clicks during init.
-      // NOTE: previously this was nested inside pauseVideoWithPromise().then()
-      // and an iframe "load" callback. If the iframe already finished loading
-      // before the listener was registered, the callback never fired and ALL
-      // controls (incl. onStateChange) stayed dead until reload. Now attached
-      // directly here, in onReady, so they are guaranteed to bind.
+      // Listeners attached IMMEDIATELY to avoid dead clicks during init
       var parent = document.querySelector("#"+playerTagId).closest(".csPlayer");
-      var player = csPlayer.csPlayers[videoTag]["videoTag"];
 
-      // Mark the player truly ready only now (onReady). The public API's
-      // `initialized` flag is set too early in init(); the UI path below uses
-      // this local flag so a tap that arrives before onReady is queued, not
-      // silently dropped.
-      csPlayer.csPlayers[videoTag]["ready"] = true;
-
-      // Hide the loading spinner on the big center icon.
+csPlayer.pauseVideoWithPromise(csPlayer.csPlayers[videoTag]["videoTag"]).then(()=>{
+       parent.querySelector(".csPlayer-container iframe").addEventListener("load",()=>{ 
       parent.querySelector(".csPlayer-container span i").classList.remove("csPlayer-loading");
-
-      // Pause first so we start from a known state (matches old behavior).
-      try { player.pauseVideo(); } catch(e){}
-
-      // If a start tap was queued before onReady fired, honor it now.
-      if(csPlayer.csPlayers[videoTag]["pendingPlay"]){
-        csPlayer.csPlayers[videoTag]["pendingPlay"] = false;
-        try { player.playVideo(); } catch(e){}
-      }
-
-      player.addEventListener('onStateChange', onPlayerStateChange);
+      csPlayer.csPlayers[videoTag]["videoTag"].addEventListener('onStateChange', onPlayerStateChange);
       parent.querySelector(".csPlayer-controls-box main i:nth-of-type(1)").addEventListener("click", backward);
       parent.querySelector(".csPlayer-controls-box main i:nth-of-type(2)").addEventListener("click", togglePlayPause);
-      parent.querySelector(".csPlayer-controls-box main i:nth-of-type(3)").addEventListener("click", forward);
-      csPlayer.csPlayers[videoTag]["TextTimeInterval"] = setInterval(updateTextTime,1000);
-      csPlayer.csPlayers[videoTag]["TimeSliderInterval"] = setInterval(updateTimeSlider,1000);
-      parent.querySelector(".csPlayer-controls-box .csPlayer-controls input").addEventListener("input",updateSlider);
+      parent.querySelector(".csPlayer-controls-box main i:nth-of-type(3)").addEventListener("click", forward);           
+csPlayer.csPlayers[videoTag]["TextTimeInterval"] = setInterval(updateTextTime,1000);      
+      csPlayer.csPlayers[videoTag]["TimeSliderInterval"] = setInterval(updateTimeSlider,1000);         parent.querySelector(".csPlayer-controls-box .csPlayer-controls input").addEventListener("input",updateSlider);
       parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").addEventListener("click",toggleFullscreen);
       document.fullscreenEnabled ? parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").style.display ="block" : parent.querySelector(".csPlayer-controls-box .csPlayer-controls .fsBtn").style.display ="none";
       parent.querySelector(".csPlayer-controls-box .csPlayer-controls .settingsBtn").addEventListener("click",toggleSettings);
-
-      // FIX: give the big center start icon a REAL handler. Previously it had
-      // none (despite the comment above) and relied on click-through to the
-      // cross-origin, heavily-scaled YouTube iframe — which is what drops the
-      // first tap intermittently in Unity WebView. We force PLAY (not toggle)
-      // and listen on pointerdown as well as click, because synthesized click
-      // events under touch are flaky in WebView.
-      wireStartOverlay(parent);
+      
+      });//iframe onload
+      });
       }}, //onReady
     }
   });
@@ -164,76 +137,14 @@ controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box")
 }
 //togglePlayPause
 function togglePlayPause(){
-// GUARD: on touch/WebView a single tap on the big center start icon fires
-// pointerdown (which calls startVideo() -> playVideo()) and THEN a residual
-// 'click' lands on this play/pause button as soon as the controls bar appears.
-// Without this guard the video plays then immediately pauses. Ignore clicks
-// that arrive shortly after a forced start.
-var lastStart = csPlayer.csPlayers[videoTag]["lastStartPlayTime"] || 0;
-if(Date.now() - lastStart < 500){ return; }
 if(csPlayer.csPlayers[videoTag]["isPlaying"]){
 csPlayer.csPlayers[videoTag]["videoTag"].pauseVideo();
 clearTimeout(controlsTimeout);
 }else{
-playFromUserGesture();
+csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
 clearTimeout(controlsTimeout);
 controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box").classList.remove("csPlayer-controls-open");},3000);
 }}
-// Reliable play for WebViews. Browsers (incl. Android WebView / WKWebView)
-// block playVideo() on UNMUTED players unless a clean user gesture is present;
-// the engine then silently rejects the call or plays ~200ms then pauses. This
-// is the documented workaround (see android-youtube-player #727):
-//   mute() -> playVideo() -> unMute() ONLY after the PLAYING state fires.
-// Calling playVideo() while muted is never blocked, and once playback is
-// confirmed by the state callback, unmuting is allowed.
-function playFromUserGesture(){
-var player = csPlayer.csPlayers[videoTag]["videoTag"];
-try { player.mute(); } catch(e){}
-try { player.playVideo(); } catch(e){}
-// Record this forced start so togglePlayPause can ignore the residual click
-// from the same physical tap (see guard at top of togglePlayPause).
-csPlayer.csPlayers[videoTag]["lastStartPlayTime"] = Date.now();
-}
-// Force-start the video from the big center overlay. NOT a toggle: the start
-// icon only ever means "play". Used by wireStartOverlay below.
-function startVideo(){
-// If onReady hasn't fired yet, queue the play so it isn't dropped.
-if(!csPlayer.csPlayers[videoTag]["ready"]){
-csPlayer.csPlayers[videoTag]["pendingPlay"] = true;
-return;
-}
-playFromUserGesture();
-}
-// Wire a REAL handler onto the big center start overlay so the first tap no
-// longer relies on click-through to the YouTube iframe (which is what fails
-// intermittently in Unity WebView). pointerdown fires under touch where click
-// is sometimes dropped; we dedupe via a flag so a single tap can't trigger
-// both handlers. Idempotent: guarded so repeated calls don't stack listeners.
-function wireStartOverlay(parent){
-var overlaySpan = parent.querySelector(".csPlayer-container span");
-if(!overlaySpan || overlaySpan.getAttribute("data-start-wired") === "true") { return; }
-overlaySpan.setAttribute("data-start-wired","true");
-// The CSS sets pointer-events:none on this overlay so it won't normally
-// receive the tap. Re-enable input capture so OUR handler gets it directly.
-overlaySpan.style.pointerEvents = "auto";
-// Dedupe a tap that would otherwise fire both pointerdown and click.
-var handledThisPress = false;
-var pressGuardTimer = null;
-function onStartPress(e){
-e.preventDefault();
-e.stopPropagation();
-if(handledThisPress){ return; }
-handledThisPress = true;
-clearTimeout(pressGuardTimer);
-pressGuardTimer = setTimeout(function(){ handledThisPress = false; }, 400);
-startVideo();
-}
-overlaySpan.addEventListener("pointerdown", onStartPress);
-overlaySpan.addEventListener("click", onStartPress);
-// Wrapper touchstart for older WebViews that don't emit pointer events.
-function onTouchStart(e){ onStartPress(e); }
-overlaySpan.addEventListener("touchstart", onTouchStart, { passive: false });
-}
 //returns second to time format
 function formatTime(seconds) {
 const h = Math.floor(seconds / 3600),
@@ -393,17 +304,10 @@ parent.querySelector(".csPlayer-controls-box").classList.add("csPlayer-controls-
 clearTimeout(controlsTimeout);
 controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box").classList.remove("csPlayer-controls-open");},3000);
 }}}
-// Guard: this branch runs on every PLAYING transition; without a guard the
-// addEventListener below would stack a new handler each time, causing erratic
-// auto-hide timing. Attach once only.
-var controlsBar = parent.querySelector(".csPlayer-controls-box .csPlayer-controls");
-if(controlsBar.getAttribute("data-controls-wired") !== "true"){
-controlsBar.setAttribute("data-controls-wired","true");
-controlsBar.addEventListener("click", ()=>{
+parent.querySelector(".csPlayer-controls-box .csPlayer-controls").addEventListener("click", ()=>{
 clearTimeout(controlsTimeout);
 controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box").classList.remove("csPlayer-controls-open");},3000);
 });
-}
 
 }else if(event.data == YT.PlayerState.PAUSED){
 clearTimeout(controlsTimeout);
@@ -450,13 +354,7 @@ return new Promise((resolve, reject) => {
     }
     csPlayer.csPlayers[videoTag]["isPlaying"] = false;
     csPlayer.csPlayers[videoTag]["playerState"] ="paused";
-    csPlayer.csPlayers[videoTag]["initialized"] = false;
-    // UI-path readiness flags. `initialized` (above) is set too early by init();
-    // `ready` is set true only inside onReady, and `pendingPlay` queues a start
-    // tap that arrives before onReady so it isn't silently dropped.
-    csPlayer.csPlayers[videoTag]["ready"] = false;
-    csPlayer.csPlayers[videoTag]["pendingPlay"] = false;
-    csPlayer.preSetup(videoTag,playerTagId="csPlayer-"+videoTag,params["defaultId"]).then(()=>{
+    csPlayer.csPlayers[videoTag]["initialized"] = false; csPlayer.preSetup(videoTag,playerTagId="csPlayer-"+videoTag,params["defaultId"]).then(()=>{
     var parent = document.querySelector("#"+playerTagId).closest(".csPlayer");
     if(("thumbnail" in csPlayer.csPlayers[videoTag]["params"])){
     if(csPlayer.csPlayers[videoTag]["params"]["thumbnail"] == true || csPlayer.csPlayers[videoTag]["params"]["thumbnail"] =="true"){
