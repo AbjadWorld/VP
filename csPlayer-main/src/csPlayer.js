@@ -175,23 +175,34 @@ if(csPlayer.csPlayers[videoTag]["isPlaying"]){
 csPlayer.csPlayers[videoTag]["videoTag"].pauseVideo();
 clearTimeout(controlsTimeout);
 }else{
-csPlayer.csPlayers[videoTag]["videoTag"].playVideo();
+playFromUserGesture();
 clearTimeout(controlsTimeout);
 controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box").classList.remove("csPlayer-controls-open");},3000);
 }}
+// Reliable play for WebViews. Browsers (incl. Android WebView / WKWebView)
+// block playVideo() on UNMUTED players unless a clean user gesture is present;
+// the engine then silently rejects the call or plays ~200ms then pauses. This
+// is the documented workaround (see android-youtube-player #727):
+//   mute() -> playVideo() -> unMute() ONLY after the PLAYING state fires.
+// Calling playVideo() while muted is never blocked, and once playback is
+// confirmed by the state callback, unmuting is allowed.
+function playFromUserGesture(){
+var player = csPlayer.csPlayers[videoTag]["videoTag"];
+try { player.mute(); } catch(e){}
+try { player.playVideo(); } catch(e){}
+// Record this forced start so togglePlayPause can ignore the residual click
+// from the same physical tap (see guard at top of togglePlayPause).
+csPlayer.csPlayers[videoTag]["lastStartPlayTime"] = Date.now();
+}
 // Force-start the video from the big center overlay. NOT a toggle: the start
 // icon only ever means "play". Used by wireStartOverlay below.
 function startVideo(){
-var player = csPlayer.csPlayers[videoTag]["videoTag"];
 // If onReady hasn't fired yet, queue the play so it isn't dropped.
 if(!csPlayer.csPlayers[videoTag]["ready"]){
 csPlayer.csPlayers[videoTag]["pendingPlay"] = true;
 return;
 }
-// Record this forced start so togglePlayPause can ignore the residual click
-// from the same physical tap (see guard at top of togglePlayPause).
-csPlayer.csPlayers[videoTag]["lastStartPlayTime"] = Date.now();
-try { player.playVideo(); } catch(e){}
+playFromUserGesture();
 }
 // Wire a REAL handler onto the big center start overlay so the first tap no
 // longer relies on click-through to the YouTube iframe (which is what fails
