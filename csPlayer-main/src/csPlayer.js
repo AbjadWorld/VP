@@ -164,6 +164,13 @@ controlsTimeout = setTimeout(()=>{parent.querySelector(".csPlayer-controls-box")
 }
 //togglePlayPause
 function togglePlayPause(){
+// GUARD: on touch/WebView a single tap on the big center start icon fires
+// pointerdown (which calls startVideo() -> playVideo()) and THEN a residual
+// 'click' lands on this play/pause button as soon as the controls bar appears.
+// Without this guard the video plays then immediately pauses. Ignore clicks
+// that arrive shortly after a forced start.
+var lastStart = csPlayer.csPlayers[videoTag]["lastStartPlayTime"] || 0;
+if(Date.now() - lastStart < 500){ return; }
 if(csPlayer.csPlayers[videoTag]["isPlaying"]){
 csPlayer.csPlayers[videoTag]["videoTag"].pauseVideo();
 clearTimeout(controlsTimeout);
@@ -181,6 +188,9 @@ if(!csPlayer.csPlayers[videoTag]["ready"]){
 csPlayer.csPlayers[videoTag]["pendingPlay"] = true;
 return;
 }
+// Record this forced start so togglePlayPause can ignore the residual click
+// from the same physical tap (see guard at top of togglePlayPause).
+csPlayer.csPlayers[videoTag]["lastStartPlayTime"] = Date.now();
 try { player.playVideo(); } catch(e){}
 }
 // Wire a REAL handler onto the big center start overlay so the first tap no
