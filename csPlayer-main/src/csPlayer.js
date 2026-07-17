@@ -314,13 +314,24 @@ clearTimeout(controlsTimeout);
 csPlayer.csPlayers[videoTag]["isPlaying"] = false;
 csPlayer.csPlayers[videoTag]["playerState"] ="paused";
 parent.querySelector(".csPlayer-controls-box main .csPlayer-play-pause-btn").className ="ti csPlayer-play-pause-btn ti-player-play-filled";
+// Defensively clear the center-icon spinner so it can't get stuck if playback
+// goes BUFFERING -> PAUSED instead of reaching PLAYING. Purely visual.
+parent.querySelector(".csPlayer-container span i").classList.remove("csPlayer-loading");
  if(!parent.querySelector(".csPlayer-controls-box").classList.contains("csPlayer-controls-open")){
 parent.querySelector(".csPlayer-controls-box").classList.add("csPlayer-controls-open");
 }
 }else if(event.data == YT.PlayerState.BUFFERING){
 csPlayer.csPlayers[videoTag]["playerState"] ="buffering";
+// Show the loading spinner on the big center icon during the play->PLAYING
+// gap (the 2-3s "nothing is happening" delay). Purely visual: reuses the
+// existing .csPlayer-loading spinner CSS. PLAYING hides the overlay span, so
+// the spinner clears automatically when playback starts.
+parent.querySelector(".csPlayer-container span i").classList.add("csPlayer-loading");
 }else if(event.data == YT.PlayerState.CUED){
 csPlayer.csPlayers[videoTag]["playerState"] ="cued";
+// Defensively clear the spinner so it can't get stuck if playback falls back
+// to CUED instead of reaching PLAYING. Purely visual.
+parent.querySelector(".csPlayer-container span i").classList.remove("csPlayer-loading");
 }else if(event.data == YT.PlayerState.ENDED){
 if(csPlayer.csPlayers[videoTag]["params"]["loop"] == true || csPlayer.csPlayers[videoTag]["params"]["loop"] =="true"){
 csPlayer.csPlayers[videoTag]["videoTag"].seekTo(0);    
